@@ -51,7 +51,7 @@ Le rapport DOIT contenir un tableau de synthèse avec le format suivant pour que
 
 Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisés (@SastIA_docker, @SastIA_analyzer, @SastIA_rapport)."""
 
-    DEFAULT_MODEL = "opencode-go/deepseek-v4-pro"
+    DEFAULT_MODEL = "opencode-go/deepseek-v4-flash"
 
     model = model_id or os.environ.get("OPENCODE_MODEL", DEFAULT_MODEL)
     opencode_cmd = _find_opencode()

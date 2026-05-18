@@ -24,10 +24,17 @@ def _read_opencode_config() -> dict:
         return {"providers": {}}
 
 
+OPCODE_DEFAULT_MODELS = [
+    ModelInfo(id="opencode-go/deepseek-v4-flash", name="Deepseek V4 Flash (rapide)", provider="OpenCode", built_in=True),
+    ModelInfo(id="opencode-go/deepseek-v4-pro", name="Deepseek V4 Pro (complet)", provider="OpenCode", built_in=True),
+    ModelInfo(id="opencode/deepseek-v4-flash-free", name="Deepseek V4 Flash (gratuit)", provider="OpenCode", built_in=True),
+]
+
+
 def _get_built_in_models() -> list[ModelInfo]:
     config = _read_opencode_config()
     providers = config.get("provider", {})
-    models: list[ModelInfo] = []
+    models = list(OPCODE_DEFAULT_MODELS)
 
     for provider_id, provider_cfg in providers.items():
         provider_name = provider_cfg.get("name", provider_id)
