@@ -1,32 +1,37 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
+BACKEND_PID=""
+FRONTEND_PID=""
+WORKER_PID=""
+POSTGRES_CONTAINER=""
+
 cleanup() {
     echo ""
     echo "=== Stopping all services ==="
-    kill $BACKEND_PID $FRONTEND_PID $WORKER_PID 2>/dev/null || true
-    if [ -n "${POSTGRES_CONTAINER:-}" ]; then
+    [ -n "$BACKEND_PID" ] && kill "$BACKEND_PID" 2>/dev/null || true
+    [ -n "$FRONTEND_PID" ] && kill "$FRONTEND_PID" 2>/dev/null || true
+    [ -n "$WORKER_PID" ] && kill "$WORKER_PID" 2>/dev/null || true
+    if [ -n "$POSTGRES_CONTAINER" ]; then
         docker stop "$POSTGRES_CONTAINER" 2>/dev/null || true
     fi
-    wait
     echo "Done."
 }
 trap cleanup EXIT INT TERM
 
-echo "=== SAST IA — Start ==="
+echo "=== SAST IA -- Start ==="
 echo ""
 
-# ── PostgreSQL ─────────────────────────────────────────
-POSTGRES_CONTAINER=""
-if command -v docker &>/dev/null; then
+# -- PostgreSQL ------------------------------------------------------------
+if command -v docker >/dev/null 2>&1; then
     if docker ps --format '{{.Names}}' 2>/dev/null | grep -q 'sastia-db'; then
         POSTGRES_CONTAINER="sastia-db"
-        echo "[✓] PostgreSQL already running (sastia-db)"
+        echo "[OK] PostgreSQL already running (sastia-db)"
     else
-        echo "[…] Starting PostgreSQL via Docker..."
+        echo "[..] Starting PostgreSQL via Docker..."
         POSTGRES_CONTAINER=$(docker run -d \
             --name sastia-db \
             -e POSTGRES_USER=sastia \
@@ -35,47 +40,49 @@ if command -v docker &>/dev/null; then
             -p 5432:5432 \
             postgres:16-alpine 2>/dev/null || true)
         if [ -n "$POSTGRES_CONTAINER" ]; then
-            echo "[✓] PostgreSQL started (container: sastia-db)"
+            echo "[OK] PostgreSQL started (container: sastia-db)"
             echo "  Waiting for PostgreSQL to be ready..."
-            for i in $(seq 1 15); do
-                if docker exec sastia-db pg_isready -U sastia &>/dev/null; then
-                    echo "  → Ready after ${i}s"
+            i=0
+            while [ $i -lt 15 ]; do
+                if docker exec sastia-db pg_isready -U sastia >/dev/null 2>&1; then
+                    echo "  -> Ready after $((i+1))s"
                     break
                 fi
+                i=$((i+1))
                 sleep 1
             done
         else
-            echo "[!] PostgreSQL container already exists, reusing it"
+            echo "[--] PostgreSQL container may already exist, reusing it"
             docker start sastia-db 2>/dev/null || true
             POSTGRES_CONTAINER="sastia-db"
         fi
     fi
 fi
 
-# ── Backend ────────────────────────────────────────────
+# -- Backend ---------------------------------------------------------------
 echo ""
-echo "[…] Starting Backend (FastAPI) on :8000"
+echo "[..] Starting Backend (FastAPI) on :8000"
 cd backend
 ../venv/bin/uvicorn app.main:app --reload --port 8000 --host 0.0.0.0 &
 BACKEND_PID=$!
 cd "$ROOT_DIR"
-echo "[✓] Backend PID $BACKEND_PID"
+echo "[OK] Backend PID $BACKEND_PID"
 
-# ── Worker ─────────────────────────────────────────────
-echo "[…] Starting Worker (FastAPI) on :9000"
+# -- Worker ----------------------------------------------------------------
+echo "[..] Starting Worker (FastAPI) on :9000"
 cd worker
 ../worker-venv/bin/uvicorn main:app --reload --port 9000 --host 0.0.0.0 &
 WORKER_PID=$!
 cd "$ROOT_DIR"
-echo "[✓] Worker PID $WORKER_PID"
+echo "[OK] Worker PID $WORKER_PID"
 
-# ── Frontend ───────────────────────────────────────────
-echo "[…] Starting Frontend (Vite) on :5173"
+# -- Frontend --------------------------------------------------------------
+echo "[..] Starting Frontend (Vite) on :5173"
 cd frontend
 npx vite --host 0.0.0.0 &
 FRONTEND_PID=$!
 cd "$ROOT_DIR"
-echo "[✓] Frontend PID $FRONTEND_PID"
+echo "[OK] Frontend PID $FRONTEND_PID"
 
 echo ""
 echo "============================================"

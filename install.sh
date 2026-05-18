@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
@@ -11,23 +11,24 @@ echo ""
 echo "[0/6] System dependencies"
 MISSING=""
 for cmd in python3 node npm; do
-    if ! command -v "$cmd" &>/dev/null; then
+    if ! command -v "$cmd" >/dev/null 2>&1; then
         MISSING="$MISSING $cmd"
     fi
 done
 if [ -n "$MISSING" ]; then
-    echo "  → Missing: $MISSING"
+    echo "  -> Missing: $MISSING"
     echo "  Install them first (e.g. apt install python3 nodejs npm)"
     exit 1
 fi
+echo "  -> All found"
 
-# Optional: install libpq-dev for psycopg2 (only if the user wants PostgreSQL & has sudo)
-if command -v sudo &>/dev/null && apt-get --version &>/dev/null 2>&1; then
-    if ! dpkg -l libpq-dev &>/dev/null 2>&1; then
-        echo "  → Installing libpq-dev (for PostgreSQL driver)..."
-        sudo apt-get install -y -qq libpq-dev 2>/dev/null || echo "  → (skipped, PostgreSQL driver may not build)"
+# Optional: install libpq-dev for psycopg2
+if command -v sudo >/dev/null 2>&1 && apt-get --version >/dev/null 2>&1; then
+    if ! dpkg -l libpq-dev >/dev/null 2>&1; then
+        echo "  -> Installing libpq-dev (for PostgreSQL driver)..."
+        sudo apt-get install -y -qq libpq-dev 2>/dev/null || echo "  -> (skipped, SQLite will be used)"
     else
-        echo "  → libpq-dev already installed"
+        echo "  -> libpq-dev already installed"
     fi
 fi
 
@@ -66,9 +67,9 @@ WORKER_URL=http://localhost:9000
 CODE_DOWNLOAD_BASE_URL=http://localhost:8000
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 ENVEOF
-    echo "  → backend/.env created (SQLite, dev defaults)"
+    echo "  -> backend/.env created (SQLite, dev defaults)"
 else
-    echo "  → backend/.env already exists, skipped"
+    echo "  -> backend/.env already exists, skipped"
 fi
 
 mkdir -p backend/uploads
@@ -76,15 +77,19 @@ mkdir -p backend/uploads
 # ── 5. PostgreSQL driver (optional) ────────────────────
 echo "[5/6] PostgreSQL driver (optional)"
 if ./venv/bin/python -c "import psycopg2" 2>/dev/null; then
-    echo "  → psycopg2 already installed"
+    echo "  -> psycopg2 already installed"
 else
-    echo "  → Installing psycopg2-binary..."
-    ./venv/bin/pip install --quiet psycopg2-binary 2>/dev/null && echo "  → done" || echo "  → skipped (SQLite will be used)"
+    echo "  -> Installing psycopg2-binary..."
+    if ./venv/bin/pip install --quiet psycopg2-binary 2>/dev/null; then
+        echo "  -> done"
+    else
+        echo "  -> skipped (SQLite will be used)"
+    fi
 fi
 
 # ── 6. Pull Docker images (optional) ───────────────────
 echo "[6/6] Docker images (optional)"
-if command -v docker &>/dev/null; then
+if command -v docker >/dev/null 2>&1; then
     docker pull postgres:16-alpine --quiet 2>/dev/null || true
 fi
 
