@@ -19,6 +19,7 @@ async def run_manager_agent(
     callback_url: str,
     repo_url: str | None = None,
     model_id: str | None = None,
+    report_language: str = "en",
     timeout: int = 7200,
 ) -> str:
     audit_dir = os.path.dirname(code_dir)
@@ -31,9 +32,10 @@ async def run_manager_agent(
 
 Le code source à analyser se trouve ici : {code_dir}
 Il provient de : {source_desc}
-L'ID de l'audit est : {audit_id}
+    L'ID de l'audit est : {audit_id}
+    La langue du rapport doit être : {report_language.upper()} (français ou english)
 
-Consignes :
+    Consignes :
 1. Active @SastIA_docker en lui indiquant le chemin {code_dir} pour qu'il mette en place l'environnement de test
 2. Active @SastIA_analyzer en lui fournissant le même chemin {code_dir} pour l'audit de sécurité
 3. Active @SastIA_rapport pour produire le rapport final

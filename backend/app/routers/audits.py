@@ -65,6 +65,7 @@ def create_audit(
     analysis_type: str = Form("code"),
     docker_analysis_enabled: bool = Form(False),
     model_id: Optional[str] = Form(None),
+    report_language: str = Form("en"),
     code_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -77,6 +78,7 @@ def create_audit(
         analysis_type=analysis_type,
         docker_analysis_enabled=1 if docker_analysis_enabled else 0,
         model_id=model_id,
+        report_language=report_language,
         status=AuditStatus.PENDING,
         docker_status=DockerStatus.NOT_STARTED if docker_analysis_enabled else DockerStatus.NOT_STARTED,
     )
@@ -138,6 +140,7 @@ def _dispatch_to_worker(audit: Audit, user: User):
         "analysis_type": audit.analysis_type,
         "docker_analysis": bool(audit.docker_analysis_enabled),
         "model_id": audit.model_id,
+        "report_language": audit.report_language or "en",
         "backend_base_url": settings.CODE_DOWNLOAD_BASE_URL,
     }
 

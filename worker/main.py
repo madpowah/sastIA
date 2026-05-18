@@ -48,6 +48,7 @@ class AnalyzeRequest(BaseModel):
     analysis_type: str = "code"
     docker_analysis: bool = False
     model_id: Optional[str] = None
+    report_language: str = "en"
     backend_base_url: Optional[str] = None
 
 
@@ -117,6 +118,7 @@ async def run_analysis(job: AnalyzeRequest):
             callback_url=job.callback_url,
             repo_url=job.repo_url,
             model_id=job.model_id,
+            report_language=job.report_language,
         )
         print(f"[worker] Analysis complete for audit {job.audit_id}")
         _write_meta(job.audit_id, status="completed", finished_at=datetime.now(timezone.utc).isoformat())

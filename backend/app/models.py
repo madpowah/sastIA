@@ -58,6 +58,7 @@ class Audit(Base):
     analysis_type = Column(String(50), default="code")
     docker_analysis_enabled = Column(Integer, default=0)
     model_id = Column(String(255), nullable=True)
+    report_language = Column(String(10), default="en")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime(timezone=True), nullable=True)

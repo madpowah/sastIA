@@ -32,6 +32,7 @@ export default function NewAudit() {
     analysis_type: 'code',
     docker_analysis_enabled: false,
     model_id: '',
+    report_language: 'en',
   })
   const [codeFile, setCodeFile] = useState<File | null>(null)
   const { t } = useLanguage()
@@ -66,6 +67,7 @@ export default function NewAudit() {
       form.append('docker_analysis_enabled', String(formData.docker_analysis_enabled))
       if (formData.repo_url) form.append('repo_url', formData.repo_url)
       if (formData.model_id) form.append('model_id', formData.model_id)
+      form.append('report_language', formData.report_language)
       if (codeFile) form.append('code_file', codeFile)
 
       const { data } = await api.post('/audits/', form, {
@@ -251,6 +253,18 @@ export default function NewAudit() {
                     <p className="text-xs text-gray-400 mt-1">
                       {t('audit.modelFormat')} : <code className="bg-gray-100 px-1 rounded">{selectedProvider || 'provider'}/{currentModels.find((m) => m.id === formData.model_id)?.id.split('/').slice(1).join('/') || 'modele'}</code>
                     </p>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('audit.reportLanguage')}</label>
+                    <select
+                      value={formData.report_language}
+                      onChange={(e) => setFormData({ ...formData, report_language: e.target.value })}
+                      className="input-field"
+                    >
+                      <option value="en">English</option>
+                      <option value="fr">Français</option>
+                    </select>
                   </div>
                 </div>
               </div>

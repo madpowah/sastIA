@@ -56,6 +56,7 @@ class AuditResponse(BaseModel):
     analysis_type: str
     docker_analysis_enabled: int
     model_id: Optional[str] = None
+    report_language: str = "en"
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime] = None
@@ -94,6 +95,7 @@ class AuditCreate(BaseModel):
     analysis_type: str = "code"
     docker_analysis_enabled: bool = False
     model_id: Optional[str] = None
+    report_language: str = "en"
 
 
 class ProviderCreate(BaseModel):

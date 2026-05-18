@@ -87,6 +87,7 @@ export const translations = {
       noAuditFilter: "No audit matches this filter.",
       noAuditYet: "You haven't run any audits yet.",
       listSubtitle: "View and manage all your security audits",
+      reportLanguage: "Report language",
       status: {
         pending: "Pending",
         analyzing_code: "Analyzing code...",
@@ -268,6 +269,7 @@ export const translations = {
       noAuditFilter: "Aucun audit ne correspond à ce filtre.",
       noAuditYet: "Vous n'avez pas encore réalisé d'audit.",
       listSubtitle: "Consultez et gérez tous vos audits de sécurité",
+      reportLanguage: "Langue du rapport",
       status: {
         pending: "En attente",
         analyzing_code: "Analyse code...",
