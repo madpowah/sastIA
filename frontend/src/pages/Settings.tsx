@@ -7,7 +7,8 @@ import {
   createProvider,
   deleteProvider,
   fetchProviderModels,
-  getAvailableModels,
+  getProviderGroups,
+  ProviderGroup,
   ModelInfo,
   ProviderInfo,
 } from '../api/providers'
@@ -24,8 +25,8 @@ import {
 } from 'lucide-react'
 
 export default function Settings() {
-  const [builtinModels, setBuiltinModels] = useState<ModelInfo[]>([])
-  const [providers, setProviders] = useState<ProviderInfo[]>([])
+  const [groups, setGroups] = useState<ProviderGroup[]>([])
+  const [customProviders, setCustomProviders] = useState<ProviderInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({ name: '', base_url: '', api_key: '' })
@@ -36,9 +37,9 @@ export default function Settings() {
   const load = async () => {
     setLoading(true)
     try {
-      const [models, provs] = await Promise.all([getAvailableModels(), getProviders()])
-      setBuiltinModels(models.filter((m) => m.built_in))
-      setProviders(provs)
+      const [g, provs] = await Promise.all([getProviderGroups(), getProviders()])
+      setGroups(g)
+      setCustomProviders(provs)
     } catch {
       setError('Erreur lors du chargement')
     } finally {
@@ -58,7 +59,7 @@ export default function Settings() {
       setShowForm(false)
       await load()
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Erreur lors de l\'ajout')
+      setError(err.response?.data?.detail || "Erreur lors de l'ajout")
     } finally {
       setSaving(false)
     }
@@ -101,24 +102,37 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Built-in models */}
+        {/* Providers and models */}
         <Card className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Cpu className="w-5 h-5 text-primary-600" />
-            Modèles intégrés (OpenCode)
+            Providers et modèles disponibles
           </h2>
           {loading ? (
             <p className="text-gray-400 text-sm">Chargement...</p>
-          ) : builtinModels.length === 0 ? (
-            <p className="text-gray-400 text-sm">Aucun modèle intégré trouvé</p>
+          ) : groups.length === 0 ? (
+            <p className="text-gray-400 text-sm">Aucun provider trouvé</p>
           ) : (
-            <div className="grid gap-2">
-              {builtinModels.map((m) => (
-                <div key={`builtin-${m.provider}-${m.id}`} className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl text-sm">
-                  <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-                  <span className="font-medium text-gray-900">{m.name}</span>
-                  <span className="text-gray-400 text-xs">{m.id}</span>
-                  <span className="ml-auto text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded">{m.provider}</span>
+            <div className="space-y-4">
+              {groups.map((g) => (
+                <div key={g.provider} className="border border-gray-100 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="font-semibold text-gray-900">{g.name}</p>
+                      <p className="text-xs text-gray-400 font-mono">{g.provider}</p>
+                    </div>
+                  </div>
+                  {g.models.length === 0 ? (
+                    <p className="text-xs text-gray-400">Aucun modèle</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {g.models.map((m) => (
+                        <span key={m.id} className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded font-mono">
+                          {m.id}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -184,11 +198,11 @@ export default function Settings() {
 
           {loading ? (
             <p className="text-gray-400 text-sm">Chargement...</p>
-          ) : providers.length === 0 ? (
+          ) : customProviders.length === 0 ? (
             <p className="text-gray-400 text-sm">Aucun provider personnalisé</p>
           ) : (
             <div className="space-y-3">
-              {providers.map((p) => {
+              {customProviders.map((p) => {
                 const models: { id: string; name: string }[] = []
                 if (p.models_json) {
                   try { models.push(...JSON.parse(p.models_json)) } catch {}
@@ -221,8 +235,8 @@ export default function Settings() {
                     {models.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {models.map((m) => (
-                          <span key={m.id} className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded">
-                            {m.name || m.id}
+                          <span key={m.id} className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded font-mono">
+                            {p.name}/{m.id}
                           </span>
                         ))}
                       </div>

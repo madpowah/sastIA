@@ -7,6 +7,12 @@ export interface ModelInfo {
   built_in: boolean
 }
 
+export interface ProviderGroup {
+  provider: string
+  name: string
+  models: ModelInfo[]
+}
+
 export interface ProviderInfo {
   id: string
   name: string
@@ -14,6 +20,11 @@ export interface ProviderInfo {
   api_key: string | null
   models_json: string | null
   created_at: string
+}
+
+export async function getProviderGroups(): Promise<ProviderGroup[]> {
+  const { data } = await api.get('/providers/groups')
+  return data
 }
 
 export async function getAvailableModels(): Promise<ModelInfo[]> {

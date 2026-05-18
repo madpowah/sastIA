@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Provider
-from app.schemas import ProviderCreate, ProviderResponse, ModelInfo
+from app.schemas import ProviderCreate, ProviderResponse, ModelInfo, ProviderGroup
 from app.auth import get_current_user
 
 router = APIRouter(prefix="/api/providers", tags=["Providers"])
@@ -24,30 +24,81 @@ def _read_opencode_config() -> dict:
         return {"providers": {}}
 
 
-OPCODE_DEFAULT_MODELS = [
-    ModelInfo(id="opencode-go/deepseek-v4-flash", name="Deepseek V4 Flash (rapide)", provider="OpenCode", built_in=True),
-    ModelInfo(id="opencode-go/deepseek-v4-pro", name="Deepseek V4 Pro (complet)", provider="OpenCode", built_in=True),
-    ModelInfo(id="opencode/deepseek-v4-flash-free", name="Deepseek V4 Flash (gratuit)", provider="OpenCode", built_in=True),
+KNOWN_PROVIDERS: list[tuple[str, str, list[tuple[str, str]]]] = [
+    ("opencode-go", "OpenCode Go", [
+        ("deepseek-v4-flash", "Deepseek V4 Flash (rapide)"),
+        ("deepseek-v4-pro", "Deepseek V4 Pro (complet)"),
+    ]),
+    ("opencode", "OpenCode (free)", [
+        ("deepseek-v4-flash-free", "Deepseek V4 Flash (gratuit)"),
+    ]),
+    ("ollama-cloud", "Ollama Cloud", [
+        ("deepseek-v4-flash", "Deepseek V4 Flash"),
+        ("deepseek-v4-pro", "Deepseek V4 Pro"),
+    ]),
 ]
 
 
-def _get_built_in_models() -> list[ModelInfo]:
+def _get_provider_groups() -> list[ProviderGroup]:
     config = _read_opencode_config()
-    providers = config.get("provider", {})
-    models = list(OPCODE_DEFAULT_MODELS)
+    config_providers = config.get("provider", {})
+    groups: list[ProviderGroup] = []
 
-    for provider_id, provider_cfg in providers.items():
+    for provider_id, display_name, models in KNOWN_PROVIDERS:
+        group_models = [
+            ModelInfo(id=f"{provider_id}/{mid}", name=mname, provider=provider_id, built_in=True)
+            for mid, mname in models
+        ]
+        groups.append(ProviderGroup(provider=provider_id, name=display_name, models=group_models))
+
+    for provider_id, provider_cfg in config_providers.items():
         provider_name = provider_cfg.get("name", provider_id)
         provider_models = provider_cfg.get("models", {})
-        for model_id, model_cfg in provider_models.items():
-            models.append(ModelInfo(
-                id=model_id,
+        if not provider_models:
+            continue
+        group_models = [
+            ModelInfo(
+                id=f"{provider_id}/{model_id}",
                 name=model_cfg.get("name", model_id),
-                provider=provider_name,
+                provider=provider_id,
                 built_in=True,
-            ))
+            )
+            for model_id, model_cfg in provider_models.items()
+        ]
+        groups.append(ProviderGroup(provider=provider_id, name=provider_name, models=group_models))
 
-    return models
+    return groups
+
+
+@router.get("/groups", response_model=list[ProviderGroup])
+def list_provider_groups(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    groups = _get_provider_groups()
+
+    user_providers = db.query(Provider).filter(Provider.user_id == current_user.id).all()
+    for provider in user_providers:
+        if not provider.models_json:
+            continue
+        try:
+            models_data = json.loads(provider.models_json)
+        except json.JSONDecodeError:
+            continue
+        group_models = [
+            ModelInfo(
+                id=f"{provider.name}/{m.get('id', m.get('_id', ''))}",
+                name=m.get("name", m.get("id", "")),
+                provider=provider.name,
+                built_in=False,
+            )
+            for m in models_data
+            if m.get("id") or m.get("_id")
+        ]
+        if group_models:
+            groups.append(ProviderGroup(provider=provider.name, name=provider.name, models=group_models))
+
+    return groups
 
 
 @router.get("/models", response_model=list[ModelInfo])
@@ -55,25 +106,11 @@ def list_available_models(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    built_in = _get_built_in_models()
-
-    user_providers = db.query(Provider).filter(Provider.user_id == current_user.id).all()
-    user_models: list[ModelInfo] = []
-    for provider in user_providers:
-        if provider.models_json:
-            try:
-                models_data = json.loads(provider.models_json)
-                for m in models_data:
-                    user_models.append(ModelInfo(
-                        id=m.get("id", m.get("_id", "")),
-                        name=m.get("name", m.get("id", "")),
-                        provider=provider.name,
-                        built_in=False,
-                    ))
-            except json.JSONDecodeError:
-                pass
-
-    return built_in + user_models
+    groups = list_provider_groups(current_user, db)
+    models = []
+    for g in groups:
+        models.extend(g.models)
+    return models
 
 
 @router.get("/", response_model=list[ProviderResponse])

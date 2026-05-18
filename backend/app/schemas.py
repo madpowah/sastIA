@@ -121,6 +121,12 @@ class ModelInfo(BaseModel):
     built_in: bool = False
 
 
+class ProviderGroup(BaseModel):
+    provider: str
+    name: str
+    models: list[ModelInfo]
+
+
 class DashboardStats(BaseModel):
     total_audits: int
     pending_audits: int

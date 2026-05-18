@@ -4,7 +4,7 @@ import api from '../api/client'
 import { DashboardLayout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
-import { getAvailableModels, ModelInfo } from '../api/providers'
+import { getProviderGroups, ProviderGroup, ModelInfo } from '../api/providers'
 import {
   Upload,
   FileCode,
@@ -22,7 +22,8 @@ export default function NewAudit() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [models, setModels] = useState<ModelInfo[]>([])
+  const [providerGroups, setProviderGroups] = useState<ProviderGroup[]>([])
+  const [selectedProvider, setSelectedProvider] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -33,9 +34,22 @@ export default function NewAudit() {
   })
   const [codeFile, setCodeFile] = useState<File | null>(null)
 
+  const currentModels = providerGroups.find((g) => g.provider === selectedProvider)?.models || []
+
   useEffect(() => {
-    getAvailableModels().then(setModels).catch(() => {})
+    getProviderGroups().then((groups) => {
+      setProviderGroups(groups)
+      if (groups.length > 0 && !selectedProvider) {
+        setSelectedProvider(groups[0].provider)
+      }
+    }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (selectedProvider && currentModels.length > 0 && !currentModels.find((m) => m.id === formData.model_id)) {
+      setFormData((prev) => ({ ...prev, model_id: currentModels[0].id }))
+    }
+  }, [selectedProvider, providerGroups])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -204,23 +218,37 @@ export default function NewAudit() {
                       <Cpu className="w-4 h-4" />
                       Modèle d'IA
                     </label>
-                    <select
-                      value={formData.model_id}
-                      onChange={(e) => setFormData({ ...formData, model_id: e.target.value })}
-                      className="input-field"
-                    >
-                      <option value="">Modèle par défaut (OpenCode)</option>
-                      {models.map((m) => (
-                        <option key={`${m.provider}-${m.id}`} value={m.id}>
-                          {m.name} ({m.provider})
-                        </option>
-                      ))}
-                    </select>
-                    {models.length === 0 && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Aucun modèle disponible. Ajoutez des providers dans les paramètres.
-                      </p>
-                    )}
+                    <div className="grid grid-cols-5 gap-3">
+                      <div className="col-span-2">
+                        <select
+                          value={selectedProvider}
+                          onChange={(e) => setSelectedProvider(e.target.value)}
+                          className="input-field"
+                        >
+                          {providerGroups.map((g) => (
+                            <option key={g.provider} value={g.provider}>
+                              {g.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-span-3">
+                        <select
+                          value={formData.model_id}
+                          onChange={(e) => setFormData({ ...formData, model_id: e.target.value })}
+                          className="input-field"
+                        >
+                          {currentModels.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Format : <code className="bg-gray-100 px-1 rounded">{selectedProvider || 'provider'}/{currentModels.find((m) => m.id === formData.model_id)?.id.split('/').slice(1).join('/') || 'modele'}</code>
+                    </p>
                   </div>
                 </div>
               </div>
