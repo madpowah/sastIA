@@ -13,6 +13,7 @@ import AdminUsers from './pages/admin/AdminUsers'
 import AdminAudits from './pages/admin/AdminAudits'
 import AdminAuditDetail from './pages/admin/AdminAuditDetail'
 import AdminUserDetail from './pages/admin/AdminUserDetail'
+import Settings from './pages/Settings'
 export default function App() {
   return (
     <Routes>
@@ -56,6 +57,15 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Report />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
           </ProtectedRoute>
         }
       />

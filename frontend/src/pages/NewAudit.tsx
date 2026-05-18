@@ -1,9 +1,10 @@
-import { useState, FormEvent, useRef } from 'react'
+import { useState, FormEvent, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
 import { DashboardLayout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { getAvailableModels, ModelInfo } from '../api/providers'
 import {
   Upload,
   FileCode,
@@ -12,6 +13,7 @@ import {
   CheckCircle,
   AlertCircle,
   Server,
+  Cpu,
 } from 'lucide-react'
 
 export default function NewAudit() {
@@ -20,14 +22,20 @@ export default function NewAudit() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [models, setModels] = useState<ModelInfo[]>([])
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     repo_url: '',
     analysis_type: 'code',
     docker_analysis_enabled: false,
+    model_id: '',
   })
   const [codeFile, setCodeFile] = useState<File | null>(null)
+
+  useEffect(() => {
+    getAvailableModels().then(setModels).catch(() => {})
+  }, [])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -41,6 +49,7 @@ export default function NewAudit() {
       form.append('analysis_type', formData.analysis_type)
       form.append('docker_analysis_enabled', String(formData.docker_analysis_enabled))
       if (formData.repo_url) form.append('repo_url', formData.repo_url)
+      if (formData.model_id) form.append('model_id', formData.model_id)
       if (codeFile) form.append('code_file', codeFile)
 
       const { data } = await api.post('/audits/', form, {
@@ -175,7 +184,7 @@ export default function NewAudit() {
                 </div>
 
                 <div className="border-t border-gray-200 pt-6">
-                  <label className="flex items-center gap-3 cursor-pointer">
+                  <label className="flex items-center gap-3 cursor-pointer mb-6">
                     <input
                       type="checkbox"
                       checked={formData.docker_analysis_enabled}
@@ -189,6 +198,30 @@ export default function NewAudit() {
                       </p>
                     </div>
                   </label>
+
+                  <div className="border-t border-gray-100 pt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <Cpu className="w-4 h-4" />
+                      Modèle d'IA
+                    </label>
+                    <select
+                      value={formData.model_id}
+                      onChange={(e) => setFormData({ ...formData, model_id: e.target.value })}
+                      className="input-field"
+                    >
+                      <option value="">Modèle par défaut (OpenCode)</option>
+                      {models.map((m) => (
+                        <option key={`${m.provider}-${m.id}`} value={m.id}>
+                          {m.name} ({m.provider})
+                        </option>
+                      ))}
+                    </select>
+                    {models.length === 0 && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Aucun modèle disponible. Ajoutez des providers dans les paramètres.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 

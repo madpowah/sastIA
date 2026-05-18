@@ -36,14 +36,6 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
-class AuditCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    repo_url: Optional[str] = None
-    analysis_type: str = "code"
-    docker_analysis_enabled: bool = False
-
-
 class AuditResponse(BaseModel):
     id: UUID
     user_id: UUID
@@ -63,6 +55,7 @@ class AuditResponse(BaseModel):
     error_message: Optional[str] = None
     analysis_type: str
     docker_analysis_enabled: int
+    model_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime] = None
@@ -92,6 +85,40 @@ class ReportResponse(BaseModel):
     audit_id: UUID
     markdown: str
     pdf_url: Optional[str] = None
+
+
+class AuditCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    repo_url: Optional[str] = None
+    analysis_type: str = "code"
+    docker_analysis_enabled: bool = False
+    model_id: Optional[str] = None
+
+
+class ProviderCreate(BaseModel):
+    name: str
+    base_url: str
+    api_key: Optional[str] = None
+
+
+class ProviderResponse(BaseModel):
+    id: UUID
+    name: str
+    base_url: str
+    api_key: Optional[str] = None
+    models_json: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ModelInfo(BaseModel):
+    id: str
+    name: str
+    provider: str
+    built_in: bool = False
 
 
 class DashboardStats(BaseModel):

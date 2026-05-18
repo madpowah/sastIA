@@ -11,10 +11,6 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
     ANALYSIS_WEBHOOK_URL: str = "http://analysis-worker:9000/analyze"
     AI_ANALYSIS_ENABLED: bool = True
-    STRIPE_API_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
-    PRICE_CODE_ANALYSIS: int = 2999
-    PRICE_DOCKER_ANALYSIS: int = 9999
     WORKER_URL: str = "http://localhost:9000"
     CODE_DOWNLOAD_BASE_URL: str = "http://localhost:8000"
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"

@@ -57,6 +57,7 @@ class Audit(Base):
     error_message = Column(Text, nullable=True)
     analysis_type = Column(String(50), default="code")
     docker_analysis_enabled = Column(Integer, default=0)
+    model_id = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -68,6 +69,20 @@ class Audit(Base):
         return (self.vulnerabilities_critical + self.vulnerabilities_high +
                 self.vulnerabilities_medium + self.vulnerabilities_low +
                 self.vulnerabilities_info)
+
+
+class Provider(Base):
+    __tablename__ = "providers"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid, ForeignKey("users.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    base_url = Column(String(1024), nullable=False)
+    api_key = Column(Text, nullable=True)
+    models_json = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User")
 
 
 

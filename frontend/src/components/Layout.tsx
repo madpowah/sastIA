@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   User,
+  Settings,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -28,6 +29,7 @@ export function DashboardLayout({ children }: LayoutProps) {
     { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Nouvel audit', href: '/audits/new', icon: Search },
     { name: 'Mes audits', href: '/audits', icon: FileText },
+    { name: 'Paramètres', href: '/settings', icon: Settings },
     ...(user?.is_admin ? [{ name: 'Administration', href: '/admin', icon: ShieldCheck }] : []),
   ]
 

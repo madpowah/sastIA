@@ -18,6 +18,7 @@ async def run_manager_agent(
     audit_id: str,
     callback_url: str,
     repo_url: str | None = None,
+    model_id: str | None = None,
     timeout: int = 7200,
 ) -> str:
     audit_dir = os.path.dirname(code_dir)
@@ -52,7 +53,7 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
 
     DEFAULT_MODEL = "opencode-go/deepseek-v4-pro"
 
-    model = os.environ.get("OPENCODE_MODEL", DEFAULT_MODEL)
+    model = model_id or os.environ.get("OPENCODE_MODEL", DEFAULT_MODEL)
     opencode_cmd = _find_opencode()
     cmd = [*opencode_cmd, "run", prompt, "--agent", "SastIA_manager", "--model", model, "--dir", code_dir, "--dangerously-skip-permissions"]
 
