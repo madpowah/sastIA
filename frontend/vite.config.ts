@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 3000,
+    allowedHosts: ['sastia.madpowah.org'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
