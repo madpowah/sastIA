@@ -23,6 +23,7 @@ import {
   AlertCircle,
   Cpu,
 } from 'lucide-react'
+import { useLanguage } from '../i18n/LanguageContext'
 
 export default function Settings() {
   const [groups, setGroups] = useState<ProviderGroup[]>([])
@@ -33,6 +34,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [fetchingId, setFetchingId] = useState<string | null>(null)
+  const { t, lang, setLang } = useLanguage()
 
   const load = async () => {
     setLoading(true)
@@ -41,7 +43,7 @@ export default function Settings() {
       setGroups(g)
       setCustomProviders(provs)
     } catch {
-      setError('Erreur lors du chargement')
+      setError(t('common.error') + ': chargement')
     } finally {
       setLoading(false)
     }
@@ -59,7 +61,7 @@ export default function Settings() {
       setShowForm(false)
       await load()
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Erreur lors de l'ajout")
+      setError(err.response?.data?.detail || t('common.error') + ': ajout')
     } finally {
       setSaving(false)
     }
@@ -70,7 +72,7 @@ export default function Settings() {
       await deleteProvider(id)
       await load()
     } catch {
-      setError('Erreur lors de la suppression')
+      setError(t('common.error') + ': suppression')
     }
   }
 
@@ -91,8 +93,8 @@ export default function Settings() {
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Paramètres</h1>
-          <p className="text-gray-500 mt-1">Gérez vos providers et modèles d'IA</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('settings.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('settings.subtitle')}</p>
         </div>
 
         {error && (
@@ -106,12 +108,12 @@ export default function Settings() {
         <Card className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Cpu className="w-5 h-5 text-primary-600" />
-            Providers et modèles disponibles
+            {t('settings.builtinProviders')}
           </h2>
           {loading ? (
-            <p className="text-gray-400 text-sm">Chargement...</p>
+            <p className="text-gray-400 text-sm">{t('common.loading')}</p>
           ) : groups.length === 0 ? (
-            <p className="text-gray-400 text-sm">Aucun provider trouvé</p>
+            <p className="text-gray-400 text-sm">{t('settings.noProviders')}</p>
           ) : (
             <div className="space-y-4">
               {groups.map((g) => (
@@ -123,7 +125,7 @@ export default function Settings() {
                     </div>
                   </div>
                   {g.models.length === 0 ? (
-                    <p className="text-xs text-gray-400">Aucun modèle</p>
+                    <p className="text-xs text-gray-400">{t('settings.noModels')}</p>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
                       {g.models.map((m) => (
@@ -144,62 +146,62 @@ export default function Settings() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <Server className="w-5 h-5 text-primary-600" />
-              Providers personnalisés
+              {t('settings.customProviders')}
             </h2>
             <Button size="sm" onClick={() => setShowForm(!showForm)} icon={<Plus className="w-4 h-4" />}>
-              Ajouter
+              {t('settings.add')}
             </Button>
           </div>
 
           {showForm && (
             <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom du provider</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.name')}</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="input-field"
-                  placeholder="ex: OpenAI, Anthropic, Groq"
+                  placeholder={t('settings.namePlaceholder')}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Globe className="w-4 h-4 inline mr-1" />
-                  URL de base
+                  {t('settings.baseUrl')}
                 </label>
                 <input
                   type="url"
                   value={formData.base_url}
                   onChange={(e) => setFormData({ ...formData, base_url: e.target.value })}
                   className="input-field"
-                  placeholder="ex: https://api.openai.com/v1"
+                  placeholder={t('settings.baseUrlPlaceholder')}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Key className="w-4 h-4 inline mr-1" />
-                  Clé API
+                  {t('settings.apiKey')}
                 </label>
                 <input
                   type="password"
                   value={formData.api_key}
                   onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
                   className="input-field"
-                  placeholder="sk-..."
+                  placeholder={t('settings.apiKeyPlaceholder')}
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowForm(false)}>Annuler</Button>
-                <Button size="sm" onClick={handleAdd} loading={saving}>Ajouter</Button>
+                <Button variant="outline" size="sm" onClick={() => setShowForm(false)}>{t('settings.cancel')}</Button>
+                <Button size="sm" onClick={handleAdd} loading={saving}>{t('settings.add')}</Button>
               </div>
             </div>
           )}
 
           {loading ? (
-            <p className="text-gray-400 text-sm">Chargement...</p>
+            <p className="text-gray-400 text-sm">{t('common.loading')}</p>
           ) : customProviders.length === 0 ? (
-            <p className="text-gray-400 text-sm">Aucun provider personnalisé</p>
+            <p className="text-gray-400 text-sm">{t('settings.noCustom')}</p>
           ) : (
             <div className="space-y-3">
               {customProviders.map((p) => {
@@ -222,7 +224,7 @@ export default function Settings() {
                           loading={fetchingId === p.id}
                           icon={<RefreshCw className="w-3 h-3" />}
                         >
-                          Modèles
+                          {t('settings.models')}
                         </Button>
                         <button
                           onClick={() => handleDelete(p.id)}
@@ -246,6 +248,33 @@ export default function Settings() {
               })}
             </div>
           )}
+        </Card>
+
+        {/* Language */}
+        <Card className="mt-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('settings.language')}</h2>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setLang('en')}
+              className={`px-6 py-3 rounded-xl font-medium text-sm border-2 transition-all ${
+                lang === 'en'
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              English
+            </button>
+            <button
+              onClick={() => setLang('fr')}
+              className={`px-6 py-3 rounded-xl font-medium text-sm border-2 transition-all ${
+                lang === 'fr'
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              Français
+            </button>
+          </div>
         </Card>
       </div>
     </DashboardLayout>

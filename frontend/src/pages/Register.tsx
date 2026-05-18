@@ -4,7 +4,10 @@ import { useAuth } from '../context/AuthContext'
 import { Shield, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 
+import { useLanguage } from '../i18n/LanguageContext'
+
 export default function Register() {
+  const { t } = useLanguage()
   const { register } = useAuth()
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
@@ -21,7 +24,7 @@ export default function Register() {
     e.preventDefault()
     setError('')
     if (formData.password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères')
+      setError(t('auth.passwordMin'))
       return
     }
     setLoading(true)
@@ -29,7 +32,7 @@ export default function Register() {
       await register(formData)
       navigate('/dashboard')
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Une erreur est survenue')
+      setError(err.response?.data?.detail || t('auth.error'))
     } finally {
       setLoading(false)
     }
@@ -43,8 +46,8 @@ export default function Register() {
             <Shield className="w-10 h-10 text-primary-600" />
             <span className="text-2xl font-bold gradient-text">SAST IA</span>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Créer un compte</h1>
-          <p className="text-gray-500 mt-2">Rejoignez SAST IA et sécurisez vos applications</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('auth.registerTitle')}</h1>
+          <p className="text-gray-500 mt-2">{t('auth.registerSubtitle')}</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
@@ -57,15 +60,42 @@ export default function Register() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nom complet</label>
-              <input
-                type="text"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="input-field"
-                placeholder="Jean Dupont"
-                required
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.fullName')}</label>
+                  <input
+                    type="text"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    className="input-field"
+                    placeholder="Jean Dupont"
+                    required
+                  />
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.email')}</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="input-field"
+                    placeholder={t('auth.emailPlaceholder')}
+                    required
+                  />
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.company')}</label>
+                  <input
+                    type="text"
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    className="input-field"
+                    placeholder={t('auth.companyPlaceholder')}
+                  />
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.password')}</label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="input-field pr-12"
+                      placeholder={t('auth.passwordPlaceholder')}
+                      required
+                      minLength={8}
+                    />
             </div>
 
             <div>
@@ -114,14 +144,13 @@ export default function Register() {
             </div>
 
             <Button type="submit" loading={loading} className="w-full" size="lg">
-              Créer mon compte
+              {t('auth.register')}
             </Button>
-          </form>
 
           <p className="text-center text-sm text-gray-500 mt-6">
-            Déjà un compte ?{' '}
+            {t('auth.hasAccount')}{' '}
             <Link to="/login" className="text-primary-600 font-medium hover:text-primary-700">
-              Se connecter
+              {t('auth.loginLink')}
             </Link>
           </p>
         </div>

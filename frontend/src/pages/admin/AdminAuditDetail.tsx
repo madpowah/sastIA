@@ -9,28 +9,7 @@ import {
   retryAdminAudit,
   type AdminAudit,
 } from '../../api/admin'
-
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    completed: 'bg-green-100 text-green-700',
-    failed: 'bg-red-100 text-red-700',
-    pending: 'bg-yellow-100 text-yellow-700',
-    analyzing_code: 'bg-blue-100 text-blue-700',
-    analyzing_docker: 'bg-purple-100 text-purple-700',
-  }
-  const labels: Record<string, string> = {
-    completed: 'Terminé',
-    failed: 'Échoué',
-    pending: 'En attente',
-    analyzing_code: 'Analyse code...',
-    analyzing_docker: 'Analyse Docker...',
-  }
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
-      {labels[status] || status}
-    </span>
-  )
-}
+import { useLanguage } from '../i18n/LanguageContext'
 
 function formatDuration(seconds: number | null): string {
   if (seconds === null) return '-'
@@ -42,6 +21,30 @@ function formatDuration(seconds: number | null): string {
 }
 
 export default function AdminAuditDetailPage() {
+  const { t } = useLanguage()
+
+  function StatusBadge({ status }: { status: string }) {
+    const colors: Record<string, string> = {
+      completed: 'bg-green-100 text-green-700',
+      failed: 'bg-red-100 text-red-700',
+      pending: 'bg-yellow-100 text-yellow-700',
+      analyzing_code: 'bg-blue-100 text-blue-700',
+      analyzing_docker: 'bg-purple-100 text-purple-700',
+    }
+    const labels: Record<string, string> = {
+      completed: t('audit.status.completed'),
+      failed: t('audit.status.failed'),
+      pending: t('audit.status.pending'),
+      analyzing_code: t('audit.status.analyzing_code'),
+      analyzing_docker: t('audit.status.analyzing_docker'),
+    }
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
+        {labels[status] || status}
+      </span>
+    )
+  }
+
   const { id } = useParams<{ id: string }>()
   const [audit, setAudit] = useState<AdminAudit | null>(null)
   const [reportMd, setReportMd] = useState<string | null>(null)
@@ -62,7 +65,7 @@ export default function AdminAuditDetailPage() {
 
   const fetchLog = useCallback(() => {
     if (!id) return
-    getAdminAuditLog(id).then((d) => setLogContent(d.log)).catch(() => setLogContent('(worker indisponible)'))
+    getAdminAuditLog(id).then((d) => setLogContent(d.log)).catch(() => setLogContent(t('admin.workerUnavailable')))
   }, [id])
 
   useEffect(() => {
@@ -136,26 +139,26 @@ export default function AdminAuditDetailPage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
-            Relancer l'analyse
+            {t('admin.retry')}
           </button>
         )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 mb-1">Créé le</p>
-          <p className="text-sm font-medium">{new Date(audit.created_at).toLocaleString('fr-FR')}</p>
+          <p className="text-xs text-gray-500 mb-1">{t('audit.detail.created')}</p>
+          <p className="text-sm font-medium">{new Date(audit.created_at).toLocaleString(t('common.dateFormat'))}</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 mb-1">Terminé le</p>
-          <p className="text-sm font-medium">{audit.completed_at ? new Date(audit.completed_at).toLocaleString('fr-FR') : '-'}</p>
+          <p className="text-xs text-gray-500 mb-1">{t('audit.detail.completed')}</p>
+          <p className="text-sm font-medium">{audit.completed_at ? new Date(audit.completed_at).toLocaleString(t('common.dateFormat')) : '-'}</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 mb-1">Durée</p>
+          <p className="text-xs text-gray-500 mb-1">{t('audit.detail.duration')}</p>
           <p className="text-sm font-medium">{formatDuration(audit.duration_seconds)}</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 mb-1">Vulnérabilités</p>
+          <p className="text-xs text-gray-500 mb-1">{t('audit.detail.vulnerabilities')}</p>
           <p className="text-sm font-medium">{audit.total_vulnerabilities}</p>
         </div>
       </div>
@@ -182,7 +185,7 @@ export default function AdminAuditDetailPage() {
               }`}
             >
               <FileText className="w-4 h-4" />
-              Rapport
+              {t('audit.detail.report')}
             </button>
             <button
               onClick={() => setTab('log')}
@@ -193,7 +196,7 @@ export default function AdminAuditDetailPage() {
               }`}
             >
               <Terminal className="w-4 h-4" />
-              Logs opencode
+              {t('admin.logs')}
             </button>
           </nav>
         </div>
@@ -205,11 +208,11 @@ export default function AdminAuditDetailPage() {
                 <ReactMarkdown>{reportMd}</ReactMarkdown>
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Aucun rapport disponible.</p>
+              <p className="text-gray-500 text-sm">{t('admin.noReport')}</p>
             )
           ) : (
             <pre className="text-xs font-mono bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto max-h-[600px] whitespace-pre-wrap">
-              {logContent || '(aucun log)'}
+              {logContent || t('admin.noLogs')}
             </pre>
           )}
         </div>

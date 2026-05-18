@@ -15,8 +15,10 @@ import {
   type AdminUser,
   type PaginatedResult,
 } from '../../api/admin'
+import { useLanguage } from '../i18n/LanguageContext'
 
 export default function AdminUsersPage() {
+  const { t } = useLanguage()
   const [data, setData] = useState<PaginatedResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -69,7 +71,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Utilisateurs</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('admin.users')}</h1>
           <p className="mt-1 text-sm text-gray-500">Gérer les comptes de la plateforme</p>
         </div>
       </div>
@@ -148,7 +150,7 @@ export default function AdminUsersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(u.created_at).toLocaleDateString('fr-FR')}
+                      {new Date(u.created_at).toLocaleDateString(t('common.dateFormat'))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <div className="flex items-center justify-end gap-2">

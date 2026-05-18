@@ -10,30 +10,33 @@ import {
 } from 'lucide-react'
 import { DashboardLayout } from '../../components/Layout'
 import { getAdminDashboard, type AdminDashboard, type AdminAudit, type AdminUser } from '../../api/admin'
-
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    completed: 'bg-green-100 text-green-700',
-    failed: 'bg-red-100 text-red-700',
-    pending: 'bg-yellow-100 text-yellow-700',
-    analyzing_code: 'bg-blue-100 text-blue-700',
-    analyzing_docker: 'bg-purple-100 text-purple-700',
-  }
-  const labels: Record<string, string> = {
-    completed: 'Terminé',
-    failed: 'Échoué',
-    pending: 'En attente',
-    analyzing_code: 'Analyse code...',
-    analyzing_docker: 'Analyse Docker...',
-  }
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
-      {labels[status] || status}
-    </span>
-  )
-}
+import { useLanguage } from '../i18n/LanguageContext'
 
 export default function AdminDashboardPage() {
+  const { t } = useLanguage()
+
+  function StatusBadge({ status }: { status: string }) {
+    const colors: Record<string, string> = {
+      completed: 'bg-green-100 text-green-700',
+      failed: 'bg-red-100 text-red-700',
+      pending: 'bg-yellow-100 text-yellow-700',
+      analyzing_code: 'bg-blue-100 text-blue-700',
+      analyzing_docker: 'bg-purple-100 text-purple-700',
+    }
+    const labels: Record<string, string> = {
+      completed: t('audit.status.completed'),
+      failed: t('audit.status.failed'),
+      pending: t('audit.status.pending'),
+      analyzing_code: t('audit.status.analyzing_code'),
+      analyzing_docker: t('audit.status.analyzing_docker'),
+    }
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
+        {labels[status] || status}
+      </span>
+    )
+  }
+
   const [data, setData] = useState<AdminDashboard | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -68,7 +71,7 @@ export default function AdminDashboardPage() {
     <DashboardLayout>
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Administration</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('admin.dashboard')}</h1>
         <p className="mt-1 text-sm text-gray-500">Tableau de bord global de la plateforme</p>
       </div>
 

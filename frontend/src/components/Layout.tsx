@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../i18n/LanguageContext'
 import {
   Shield,
   LayoutDashboard,
@@ -21,16 +22,17 @@ interface LayoutProps {
 
 export function DashboardLayout({ children }: LayoutProps) {
   const { user, logout } = useAuth()
+  const { t } = useLanguage()
   const location = useLocation()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const navigation = [
-    { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Nouvel audit', href: '/audits/new', icon: Search },
-    { name: 'Mes audits', href: '/audits', icon: FileText },
-    { name: 'Paramètres', href: '/settings', icon: Settings },
-    ...(user?.is_admin ? [{ name: 'Administration', href: '/admin', icon: ShieldCheck }] : []),
+    { name: t('nav.dashboard'), href: '/dashboard', icon: LayoutDashboard },
+    { name: t('nav.newAudit'), href: '/audits/new', icon: Search },
+    { name: t('nav.myAudits'), href: '/audits', icon: FileText },
+    { name: t('nav.settings'), href: '/settings', icon: Settings },
+    ...(user?.is_admin ? [{ name: t('nav.administration'), href: '/admin', icon: ShieldCheck }] : []),
   ]
 
   const handleLogout = () => {
@@ -86,7 +88,7 @@ export function DashboardLayout({ children }: LayoutProps) {
               className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors mt-1"
             >
               <LogOut className="w-5 h-5" />
-              Déconnexion
+              {t('nav.logout')}
             </button>
           </div>
         </aside>

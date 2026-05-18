@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import api from '../api/client'
 import { DashboardLayout } from '../components/Layout'
+import { useLanguage } from '../i18n/LanguageContext'
 import { Button } from '../components/ui/Button'
 import {
   ArrowLeft,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react'
 
 export default function Report() {
+  const { t } = useLanguage()
   const { id } = useParams<{ id: string }>()
   const [markdown, setMarkdown] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,7 +29,7 @@ export default function Report() {
         setMarkdown(data.markdown)
         setAuditName(data.audit_id)
       } catch (err: any) {
-        setError(err.response?.data?.detail || 'Rapport non disponible')
+        setError(err.response?.data?.detail || t('audit.detail.noReport'))
       } finally {
         setLoading(false)
       }
@@ -66,31 +68,48 @@ export default function Report() {
       <DashboardLayout>
         <div className="max-w-2xl mx-auto text-center py-12">
           <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Rapport non disponible</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('audit.detail.noReport')}</h2>
           <p className="text-gray-500 mb-6">{error}</p>
           <Link to={`/audits/${id}`}>
             <Button variant="outline" icon={<ArrowLeft className="w-4 h-4" />}>
-              Retour à l'audit
-            </Button>
-          </Link>
+              {t('audit.backToAudit')}
+            </Link>
+          </div>
+          <Button onClick={handleDownloadPdf} icon={<FileText className="w-4 h-4" />}>
+            {t('audit.detail.downloadPdf')}
+          </Button>
         </div>
-      </DashboardLayout>
-    )
-  }
-
-  return (
-    <DashboardLayout>
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        {/* Report tabs */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {(audit?.status === 'analyzing_code' || audit?.status === 'analyzing_docker') && (
+            <div className="p-6 text-center">
+              <RefreshCw className="w-8 h-8 text-primary-600 animate-spin mx-auto mb-3" />
+              <p className="text-gray-500">{t('audit.processing')}</p>
+            </div>
+          )}
+          {audit?.status === 'completed' && reportMd ? (
+            <div className="p-6 lg:p-8">
+              <div className="report-content">
+                <ReactMarkdown>{reportMd}</ReactMarkdown>
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 text-center">
+              <p className="text-gray-400">{t('audit.detail.noReport')}</p>
+            </div>
+          )}
+        </div>
+        {/* Bottom */}
+        <div className="flex justify-center">
           <Link
             to={`/audits/${id}`}
             className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
           >
             <ArrowLeft className="w-4 h-4" />
-            Retour à l'audit
+            {t('audit.backToAudit')}
           </Link>
           <Button variant="outline" icon={<Download className="w-4 h-4" />} onClick={downloadPdf}>
-            Télécharger PDF
+            {t('audit.detail.downloadPdf')}
           </Button>
         </div>
 
@@ -104,7 +123,7 @@ export default function Report() {
 
         <div className="flex justify-center mt-8">
           <Button icon={<Download className="w-4 h-4" />} onClick={downloadPdf}>
-            Télécharger le rapport en PDF
+            {t('audit.detail.downloadPdf')}
           </Button>
         </div>
       </div>

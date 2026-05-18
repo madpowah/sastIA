@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { useLanguage } from '../i18n/LanguageContext'
 import api from '../api/client'
 import { DashboardLayout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
@@ -39,23 +40,24 @@ interface Audit {
   completed_at: string | null
 }
 
-const statusConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
-  pending: { label: 'En attente', color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200', icon: Clock },
-  analyzing_code: { label: 'Analyse du code en cours...', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', icon: RefreshCw },
-  analyzing_docker: { label: 'Validation Docker en cours...', color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200', icon: Server },
-  completed: { label: 'Terminé', color: 'text-green-700', bg: 'bg-green-50 border-green-200', icon: CheckCircle },
-  failed: { label: 'Échec', color: 'text-red-700', bg: 'bg-red-50 border-red-200', icon: XCircle },
-}
-
-const dockerStatusConfig: Record<string, { label: string; color: string }> = {
-  not_started: { label: 'Non démarré', color: 'text-gray-500' },
-  pending: { label: 'Installation en cours...', color: 'text-blue-600' },
-  success: { label: 'Installation réussie', color: 'text-green-600' },
-  failed: { label: 'Installation échouée', color: 'text-red-600' },
-}
+const dockerStatusConfig = (t: (key: string) => string): Record<string, { label: string; color: string }> => ({
+  not_started: { label: t('audit.docker.not_started'), color: 'text-gray-500' },
+  pending: { label: t('audit.docker.pending'), color: 'text-blue-600' },
+  success: { label: t('audit.docker.success'), color: 'text-green-600' },
+  failed: { label: t('audit.docker.failed'), color: 'text-red-600' },
+})
 
 export default function AuditDetail() {
   const { id } = useParams<{ id: string }>()
+  const { t } = useLanguage()
+
+  const statusConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+    pending: { label: t('audit.status.pending'), color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200', icon: Clock },
+    analyzing_code: { label: t('audit.status.analyzing_code'), color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', icon: RefreshCw },
+    analyzing_docker: { label: t('audit.status.analyzing_docker'), color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200', icon: Server },
+    completed: { label: t('audit.status.completed'), color: 'text-green-700', bg: 'bg-green-50 border-green-200', icon: CheckCircle },
+    failed: { label: t('audit.status.failed'), color: 'text-red-700', bg: 'bg-red-50 border-red-200', icon: XCircle },
+  }
   const startingRef = useRef(false)
   const [audit, setAudit] = useState<Audit | null>(null)
   const [loading, setLoading] = useState(true)
@@ -131,7 +133,7 @@ export default function AuditDetail() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{audit.name}</h1>
             <p className="text-gray-500 mt-1">
-              Créé le {new Date(audit.created_at).toLocaleDateString('fr-FR', {
+              {t('audit.detail.created')} {new Date(audit.created_at).toLocaleDateString(t('common.dateFormat'), {
                 day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
               })}
             </p>
@@ -169,8 +171,8 @@ export default function AuditDetail() {
                   {audit.docker_analysis_enabled ? 'Analyse complète + Docker' : 'Analyse de code uniquement'}
                 </p>
                 {audit.docker_analysis_enabled && (
-                  <p className={`text-sm mt-1 ${dockerStatusConfig[audit.docker_status]?.color || 'text-gray-500'}`}>
-                    Docker : {dockerStatusConfig[audit.docker_status]?.label || audit.docker_status}
+                  <p className={`text-sm mt-1 ${dockerStatusConfig(t)[audit.docker_status]?.color || 'text-gray-500'}`}>
+                    Docker : {dockerStatusConfig(t)[audit.docker_status]?.label || audit.docker_status}
                   </p>
                 )}
               </div>
@@ -179,7 +181,7 @@ export default function AuditDetail() {
 
           {isCompleted && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Vulnérabilités</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('audit.detail.vulnerabilities')}</h2>
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-3xl font-bold text-gray-900">{audit.total_vulnerabilities}</span>
                 <span className="text-gray-500">totales</span>
@@ -209,7 +211,7 @@ export default function AuditDetail() {
         {/* Actions */}
         {isCompleted && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Rapport d'audit</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('audit.detail.report')}</h2>
             <p className="text-gray-500 mb-6">
               Consultez le rapport détaillé de l'audit avec toutes les vulnérabilités détectées,
               les scores CVSS et les recommandations de correction.
@@ -239,7 +241,7 @@ export default function AuditDetail() {
                   }
                 }}
               >
-                Télécharger PDF
+                {t('audit.detail.downloadPdf')}
               </Button>
             </div>
           </div>
@@ -248,9 +250,9 @@ export default function AuditDetail() {
         {isStillPending && (
           <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 text-center">
             <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Audit prêt à être lancé</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('audit.readyToLaunch')}</h2>
             <p className="text-gray-500 mb-6">
-              Cliquez ci-dessous pour démarrer l'analyse sur le worker.
+              {t('audit.detail.startHint')}
             </p>
             <Button
               onClick={startAnalysis}
@@ -258,7 +260,7 @@ export default function AuditDetail() {
               icon={<Play className="w-4 h-4" />}
               size="lg"
             >
-              Lancer l'analyse
+              {t('audit.detail.startAnalysis')}
             </Button>
           </div>
         )}
@@ -268,7 +270,7 @@ export default function AuditDetail() {
             <RefreshCw className="w-12 h-12 text-blue-500 mx-auto mb-4 animate-spin" />
             <h2 className="text-xl font-semibold text-blue-900 mb-2">Analyse en cours</h2>
             <p className="text-blue-700">
-              Votre audit est en cours de traitement. Cette page se met à jour automatiquement.
+              {t('audit.processing')}
             </p>
           </div>
         )}

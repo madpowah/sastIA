@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/client'
 import { DashboardLayout } from '../components/Layout'
+import { useLanguage } from '../i18n/LanguageContext'
 import { Button } from '../components/ui/Button'
 import {
   FileText,
@@ -25,15 +26,16 @@ interface Audit {
   completed_at: string | null
 }
 
-const statusLabels: Record<string, { label: string; color: string }> = {
-  pending: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700' },
-  analyzing_code: { label: 'Analyse code...', color: 'bg-blue-100 text-blue-700' },
-  analyzing_docker: { label: 'Analyse Docker...', color: 'bg-purple-100 text-purple-700' },
-  completed: { label: 'Terminé', color: 'bg-green-100 text-green-700' },
-  failed: { label: 'Échec', color: 'bg-red-100 text-red-700' },
-}
-
 export default function AuditsList() {
+  const { t } = useLanguage()
+
+  const statusLabels: Record<string, { label: string; color: string }> = {
+    pending: { label: t('audit.status.pending'), color: 'bg-yellow-100 text-yellow-700' },
+    analyzing_code: { label: t('audit.status.analyzing_code'), color: 'bg-blue-100 text-blue-700' },
+    analyzing_docker: { label: t('audit.status.analyzing_docker'), color: 'bg-purple-100 text-purple-700' },
+    completed: { label: t('audit.status.completed'), color: 'bg-green-100 text-green-700' },
+    failed: { label: t('audit.status.failed'), color: 'bg-red-100 text-red-700' },
+  }
   const [audits, setAudits] = useState<Audit[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
@@ -60,12 +62,12 @@ export default function AuditsList() {
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mes audits</h1>
-            <p className="text-gray-500 mt-1">Consultez et gérez tous vos audits de sécurité</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('nav.myAudits')}</h1>
+            <p className="text-gray-500 mt-1">{t('audit.listSubtitle')}</p>
           </div>
           <Link to="/audits/new">
             <Button icon={<Search className="w-4 h-4" />}>
-              Nouvel audit
+              {t('dashboard.newAudit')}
             </Button>
           </Link>
         </div>
@@ -74,12 +76,12 @@ export default function AuditsList() {
         <div className="flex items-center gap-3 overflow-x-auto pb-2">
           <Filter className="w-5 h-5 text-gray-400 shrink-0" />
           {[
-            { value: 'all', label: 'Tous' },
-            { value: 'pending', label: 'En attente' },
-            { value: 'analyzing_code', label: 'Analyse code' },
-            { value: 'analyzing_docker', label: 'Analyse Docker' },
-            { value: 'completed', label: 'Terminés' },
-            { value: 'failed', label: 'Échecs' },
+            { value: 'all', label: t('common.all') },
+            { value: 'pending', label: t('audit.status.pending') },
+            { value: 'analyzing_code', label: t('audit.status.analyzing_code') },
+            { value: 'analyzing_docker', label: t('audit.status.analyzing_docker') },
+            { value: 'completed', label: t('audit.status.completed') },
+            { value: 'failed', label: t('audit.status.failed') },
           ].map((f) => (
             <button
               key={f.value}
@@ -116,7 +118,7 @@ export default function AuditsList() {
                     <div>
                       <p className="font-medium text-gray-900">{audit.name}</p>
                       <p className="text-sm text-gray-500">
-                        {new Date(audit.created_at).toLocaleDateString('fr-FR', {
+                        {new Date(audit.created_at).toLocaleDateString(t('common.dateFormat'), {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',
@@ -162,14 +164,14 @@ export default function AuditsList() {
         ) : (
           <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
             <FileText className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun audit trouvé</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('dashboard.noAudits')}</h3>
             <p className="text-gray-500 mb-6">
-              {filter === 'all' ? 'Vous n\'avez pas encore réalisé d\'audit.' : 'Aucun audit ne correspond à ce filtre.'}
+               {filter === 'all' ? t('audit.noAuditYet') : t('audit.noAuditFilter')}
             </p>
             {filter === 'all' && (
               <Link to="/audits/new">
                 <Button icon={<Search className="w-4 h-4" />}>
-                  Lancer mon premier audit
+                  {t('dashboard.newAudit')}
                 </Button>
               </Link>
             )}

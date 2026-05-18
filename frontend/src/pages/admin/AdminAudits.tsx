@@ -11,28 +11,7 @@ import {
   type AdminAudit,
   type PaginatedResult,
 } from '../../api/admin'
-
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    completed: 'bg-green-100 text-green-700',
-    failed: 'bg-red-100 text-red-700',
-    pending: 'bg-yellow-100 text-yellow-700',
-    analyzing_code: 'bg-blue-100 text-blue-700',
-    analyzing_docker: 'bg-purple-100 text-purple-700',
-  }
-  const labels: Record<string, string> = {
-    completed: 'Terminé',
-    failed: 'Échoué',
-    pending: 'En attente',
-    analyzing_code: 'Analyse code...',
-    analyzing_docker: 'Analyse Docker...',
-  }
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
-      {labels[status] || status}
-    </span>
-  )
-}
+import { useLanguage } from '../i18n/LanguageContext'
 
 function SeverityBlock({ label, count, color }: { label: string; count: number; color: string }) {
   if (count === 0) return null
@@ -53,6 +32,30 @@ function formatDuration(seconds: number | null): string {
 }
 
 export default function AdminAuditsPage() {
+  const { t } = useLanguage()
+
+  function StatusBadge({ status }: { status: string }) {
+    const colors: Record<string, string> = {
+      completed: 'bg-green-100 text-green-700',
+      failed: 'bg-red-100 text-red-700',
+      pending: 'bg-yellow-100 text-yellow-700',
+      analyzing_code: 'bg-blue-100 text-blue-700',
+      analyzing_docker: 'bg-purple-100 text-purple-700',
+    }
+    const labels: Record<string, string> = {
+      completed: t('audit.status.completed'),
+      failed: t('audit.status.failed'),
+      pending: t('audit.status.pending'),
+      analyzing_code: t('audit.status.analyzing_code'),
+      analyzing_docker: t('audit.status.analyzing_docker'),
+    }
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
+        {labels[status] || status}
+      </span>
+    )
+  }
+
   const [data, setData] = useState<PaginatedResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -81,7 +84,7 @@ export default function AdminAuditsPage() {
     <DashboardLayout>
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Tous les audits</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('admin.audits')}</h1>
         <p className="mt-1 text-sm text-gray-500">Audits de tous les utilisateurs</p>
       </div>
 
@@ -97,7 +100,7 @@ export default function AdminAuditsPage() {
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {s === '' ? 'Tous' : s === 'pending' ? 'En attente' : s === 'analyzing_code' ? 'Analyse code' : s === 'analyzing_docker' ? 'Docker' : s === 'completed' ? 'Terminés' : 'Échecs'}
+            {s === '' ? t('common.all') : s === 'pending' ? t('audit.status.pending') : s === 'analyzing_code' ? t('audit.status.analyzing_code') : s === 'analyzing_docker' ? t('audit.status.analyzing_docker') : s === 'completed' ? t('audit.status.completed') : t('audit.status.failed')}
           </button>
         ))}
       </div>
@@ -149,10 +152,10 @@ export default function AdminAuditsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(a.created_at).toLocaleString('fr-FR')}
+                      {new Date(a.created_at).toLocaleString(t('common.dateFormat'))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {a.completed_at ? new Date(a.completed_at).toLocaleString('fr-FR') : '-'}
+                      {a.completed_at ? new Date(a.completed_at).toLocaleString(t('common.dateFormat')) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDuration(a.duration_seconds)}
