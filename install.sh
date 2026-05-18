@@ -7,8 +7,32 @@ cd "$ROOT_DIR"
 echo "=== SAST IA — Installation ==="
 echo ""
 
+# ── System dependencies ──────────────────────────────
+echo "[0/6] System dependencies"
+MISSING=""
+for cmd in python3 node npm; do
+    if ! command -v "$cmd" &>/dev/null; then
+        MISSING="$MISSING $cmd"
+    fi
+done
+if [ -n "$MISSING" ]; then
+    echo "  → Missing: $MISSING"
+    echo "  Install them first (e.g. apt install python3 nodejs npm)"
+    exit 1
+fi
+
+# Optional: install libpq-dev for psycopg2 (only if the user wants PostgreSQL & has sudo)
+if command -v sudo &>/dev/null && apt-get --version &>/dev/null 2>&1; then
+    if ! dpkg -l libpq-dev &>/dev/null 2>&1; then
+        echo "  → Installing libpq-dev (for PostgreSQL driver)..."
+        sudo apt-get install -y -qq libpq-dev 2>/dev/null || echo "  → (skipped, PostgreSQL driver may not build)"
+    else
+        echo "  → libpq-dev already installed"
+    fi
+fi
+
 # ── 1. Backend venv ────────────────────────────────────
-echo "[1/5] Backend — virtualenv + dependencies"
+echo "[1/6] Backend — virtualenv + dependencies"
 if [ ! -d venv ]; then
     python3 -m venv venv
 fi
@@ -16,7 +40,7 @@ fi
 ./venv/bin/pip install --quiet -r backend/requirements.txt
 
 # ── 2. Worker venv ─────────────────────────────────────
-echo "[2/5] Worker — virtualenv + dependencies"
+echo "[2/6] Worker — virtualenv + dependencies"
 if [ ! -d worker-venv ]; then
     python3 -m venv worker-venv
 fi
@@ -24,13 +48,13 @@ fi
 ./worker-venv/bin/pip install --quiet -r worker/requirements.txt
 
 # ── 3. Frontend ────────────────────────────────────────
-echo "[3/5] Frontend — npm install"
+echo "[3/6] Frontend — npm install"
 cd frontend
 npm install --silent
 cd "$ROOT_DIR"
 
 # ── 4. .env ────────────────────────────────────────────
-echo "[4/5] Backend .env"
+echo "[4/6] Backend .env"
 if [ ! -f backend/.env ]; then
     cat > backend/.env << 'ENVEOF'
 DATABASE_URL=sqlite:///./sastia.db
@@ -47,12 +71,21 @@ else
     echo "  → backend/.env already exists, skipped"
 fi
 
-# ── 5. PostgreSQL via Docker (optional) ─────────────────
-echo "[5/5] PostgreSQL Docker image (pull only)"
-if command -v docker &>/dev/null; then
-    docker pull postgres:16-alpine --quiet 2>/dev/null || echo "  → (docker not available, SQLite will be used)"
+mkdir -p backend/uploads
+
+# ── 5. PostgreSQL driver (optional) ────────────────────
+echo "[5/6] PostgreSQL driver (optional)"
+if ./venv/bin/python -c "import psycopg2" 2>/dev/null; then
+    echo "  → psycopg2 already installed"
 else
-    echo "  → (docker not found, SQLite will be used)"
+    echo "  → Installing psycopg2-binary..."
+    ./venv/bin/pip install --quiet psycopg2-binary 2>/dev/null && echo "  → done" || echo "  → skipped (SQLite will be used)"
+fi
+
+# ── 6. Pull Docker images (optional) ───────────────────
+echo "[6/6] Docker images (optional)"
+if command -v docker &>/dev/null; then
+    docker pull postgres:16-alpine --quiet 2>/dev/null || true
 fi
 
 echo ""
