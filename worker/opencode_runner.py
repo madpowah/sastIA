@@ -66,13 +66,12 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
     opencode_cmd = _find_opencode()
     cmd = [
         *opencode_cmd, "run", prompt,
-        "--agent", "SastIA_manager",
         "--model", model,
         "--dir", code_dir,
         "--dangerously-skip-permissions",
     ]
 
-    print(f"[opencode] Launching SastIA_manager agent with model {model}...")
+    print(f"[opencode] Launching agent with model {model}...")
     print(f"[opencode] Code dir: {code_dir}")
     print(f"[opencode] Callback: {callback_url}")
     print(f"[opencode] Log file: {worker_log}")
