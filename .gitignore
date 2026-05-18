@@ -1,0 +1,9 @@
+venv/
+worker-venv/
+__pycache__/
+*.pyc
+.env
+.gstack/
+.opencode/
+.DS_Store
+node_modules/

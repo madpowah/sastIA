@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    environment:
+      - DATABASE_URL=postgresql://sastia:sastia@db:5432/sastia
+      - SECRET_KEY=change-this-to-a-long-random-string
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - UPLOAD_DIR=/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sastia-network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - sastia-network
+
+  worker:
+    build: ./worker
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./worker:/app
+      - sastia_worker_data:/tmp/sastia-worker
+    environment:
+      - WORK_DIR=/tmp/sastia-worker
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - sastia-network
+    profiles:
+      - full
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=sastia
+      - POSTGRES_PASSWORD=sastia
+      - POSTGRES_DB=sastia
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sastia"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - sastia-network
+
+volumes:
+  postgres_data:
+  uploads:
+  sastia_worker_data:
+
+networks:
+  sastia-network:
+    driver: bridge
