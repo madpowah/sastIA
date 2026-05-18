@@ -65,14 +65,15 @@ export default function Login() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.password')}</label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="input-field pr-12"
-                    placeholder={t('auth.passwordPlaceholder')}
-                    required
-                  />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field pr-12"
+                  placeholder={t('auth.passwordPlaceholder')}
+                  required
+                />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -86,6 +87,7 @@ export default function Login() {
             <Button type="submit" loading={loading} className="w-full" size="lg">
               {t('auth.login')}
             </Button>
+          </form>
 
           <p className="text-center text-sm text-gray-500 mt-6">
             {t('auth.noAccount')}{' '}

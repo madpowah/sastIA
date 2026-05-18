@@ -73,42 +73,23 @@ export default function Report() {
           <Link to={`/audits/${id}`}>
             <Button variant="outline" icon={<ArrowLeft className="w-4 h-4" />}>
               {t('audit.backToAudit')}
-            </Link>
-          </div>
-          <Button onClick={handleDownloadPdf} icon={<FileText className="w-4 h-4" />}>
-            {t('audit.detail.downloadPdf')}
-          </Button>
-        </div>
-        {/* Report tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {(audit?.status === 'analyzing_code' || audit?.status === 'analyzing_docker') && (
-            <div className="p-6 text-center">
-              <RefreshCw className="w-8 h-8 text-primary-600 animate-spin mx-auto mb-3" />
-              <p className="text-gray-500">{t('audit.processing')}</p>
-            </div>
-          )}
-          {audit?.status === 'completed' && reportMd ? (
-            <div className="p-6 lg:p-8">
-              <div className="report-content">
-                <ReactMarkdown>{reportMd}</ReactMarkdown>
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 text-center">
-              <p className="text-gray-400">{t('audit.detail.noReport')}</p>
-            </div>
-          )}
-        </div>
-        {/* Bottom */}
-        <div className="flex justify-center">
-          <Link
-            to={`/audits/${id}`}
-            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t('audit.backToAudit')}
+            </Button>
           </Link>
-          <Button variant="outline" icon={<Download className="w-4 h-4" />} onClick={downloadPdf}>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <Link to={`/audits/${id}`}>
+            <Button variant="outline" icon={<ArrowLeft className="w-4 h-4" />}>
+              {t('audit.backToAudit')}
+            </Button>
+          </Link>
+          <Button onClick={downloadPdf} icon={<FileText className="w-4 h-4" />}>
             {t('audit.detail.downloadPdf')}
           </Button>
         </div>

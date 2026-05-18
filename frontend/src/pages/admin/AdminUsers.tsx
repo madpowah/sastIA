@@ -15,7 +15,7 @@ import {
   type AdminUser,
   type PaginatedResult,
 } from '../../api/admin'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../../i18n/LanguageContext'
 
 export default function AdminUsersPage() {
   const { t } = useLanguage()

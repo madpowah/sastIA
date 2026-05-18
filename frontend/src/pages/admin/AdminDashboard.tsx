@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { DashboardLayout } from '../../components/Layout'
 import { getAdminDashboard, type AdminDashboard, type AdminAudit, type AdminUser } from '../../api/admin'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../../i18n/LanguageContext'
 
 export default function AdminDashboardPage() {
   const { t } = useLanguage()

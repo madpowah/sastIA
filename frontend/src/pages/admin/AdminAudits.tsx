@@ -11,7 +11,7 @@ import {
   type AdminAudit,
   type PaginatedResult,
 } from '../../api/admin'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../../i18n/LanguageContext'
 
 function SeverityBlock({ label, count, color }: { label: string; count: number; color: string }) {
   if (count === 0) return null

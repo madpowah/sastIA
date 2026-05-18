@@ -9,7 +9,7 @@ import {
   retryAdminAudit,
   type AdminAudit,
 } from '../../api/admin'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useLanguage } from '../../i18n/LanguageContext'
 
 function formatDuration(seconds: number | null): string {
   if (seconds === null) return '-'

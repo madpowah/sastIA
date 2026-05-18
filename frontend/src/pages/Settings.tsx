@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { DashboardLayout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { useLanguage } from '../i18n/LanguageContext'
 import api from '../api/client'
 import {
   getProviders,
@@ -109,7 +110,6 @@ export default function Settings() {
     } finally {
       setPwSaving(false)
     }
-  }
   }
 
   return (

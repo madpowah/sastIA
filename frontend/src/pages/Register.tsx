@@ -61,75 +61,48 @@ export default function Register() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.fullName')}</label>
-                  <input
-                    type="text"
-                    value={formData.full_name}
-                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    className="input-field"
-                    placeholder="Jean Dupont"
-                    required
-                  />
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.email')}</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="input-field"
-                    placeholder={t('auth.emailPlaceholder')}
-                    required
-                  />
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.company')}</label>
-                  <input
-                    type="text"
-                    value={formData.company}
-                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                    className="input-field"
-                    placeholder={t('auth.companyPlaceholder')}
-                  />
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.password')}</label>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="input-field pr-12"
-                      placeholder={t('auth.passwordPlaceholder')}
-                      required
-                      minLength={8}
-                    />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                type="text"
+                value={formData.full_name}
+                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                 className="input-field"
-                placeholder="vous@entreprise.com"
+                placeholder="Jean Dupont"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Entreprise</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.email')}</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="input-field"
+                placeholder={t('auth.emailPlaceholder')}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.company')}</label>
               <input
                 type="text"
                 value={formData.company}
                 onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                 className="input-field"
-                placeholder="Ma Société SAS (optionnel)"
+                placeholder={t('auth.companyPlaceholder')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.password')}</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="input-field pr-12"
-                  placeholder="Minimum 8 caractères"
+                  placeholder={t('auth.passwordPlaceholder')}
                   required
                   minLength={8}
                 />
@@ -146,6 +119,7 @@ export default function Register() {
             <Button type="submit" loading={loading} className="w-full" size="lg">
               {t('auth.register')}
             </Button>
+          </form>
 
           <p className="text-center text-sm text-gray-500 mt-6">
             {t('auth.hasAccount')}{' '}
