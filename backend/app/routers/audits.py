@@ -164,43 +164,153 @@ def download_code(audit_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 class CallbackBody(BaseModel):
-    report_markdown: str
+    report_markdown: Optional[str] = None
     vulnerabilities: Optional[dict] = None
     docker_success: Optional[bool] = None
     error: Optional[str] = None
 
 
+SEVERITY_MAP = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low"}
+CVSS_THRESHOLDS = {"Critical": 9.0, "High": 7.0, "Medium": 4.0, "Low": 0.0}
+
+
+def _severity_from_cvss(cvss: float) -> str:
+    for sev, threshold in [("Critical", 9.0), ("High", 7.0), ("Medium", 4.0)]:
+        if cvss >= threshold:
+            return sev
+    return "Low"
+
+
+def _build_markdown_from_vulns(vulns: list[dict], summary: str = "", metrics: Optional[dict] = None) -> str:
+    if not metrics:
+        metrics = {}
+    critical = metrics.get("critical", 0)
+    high = metrics.get("high", 0)
+    medium = metrics.get("medium", 0)
+    low = metrics.get("low", 0)
+    total = metrics.get("total_vulnerabilities", critical + high + medium + low)
+
+    if not total:
+        for v in vulns:
+            sev = v.get("severity", "").lower()
+            if sev in SEVERITY_MAP:
+                if sev == "critical": critical += 1
+                elif sev == "high": high += 1
+                elif sev == "medium": medium += 1
+                elif sev == "low": low += 1
+            elif "cvss" in v:
+                s = _severity_from_cvss(float(v["cvss"]))
+                if s == "Critical": critical += 1
+                elif s == "High": high += 1
+                elif s == "Medium": medium += 1
+                else: low += 1
+        total = critical + high + medium + low
+
+    lines = ["# Rapport d'Audit"]
+    if summary:
+        lines.append(f"\n{summary}")
+    lines.append(f"\n## Synthèse\n")
+    lines.append("| Severity | Count |")
+    lines.append("|----------|-------|")
+    lines.append(f"| Critical | {critical} |")
+    lines.append(f"| High     | {high} |")
+    lines.append(f"| Medium   | {medium} |")
+    lines.append(f"| Low      | {low} |")
+    lines.append(f"\n**Total: {total} vulnérabilités**")
+
+    if vulns:
+        lines.append(f"\n## Détail des vulnérabilités\n")
+        for v in vulns:
+            severity = v.get("severity", v.get("type", "Info"))
+            cvss = v.get("cvss", "")
+            title = v.get("title", v.get("id", "Vulnérabilité"))
+            file_path = v.get("file_path", "")
+            line = v.get("line", "")
+            cwe = v.get("cwe", "")
+            description = v.get("description", "")
+            impact = v.get("impact", "")
+            recommendation = v.get("recommendation", "")
+            validation = v.get("validation_status", "")
+            code_snippet = v.get("code_snippet", "")
+            remediation = v.get("remediation", "")
+            proof = v.get("proof", "")
+
+            lines.append(f"### {v.get('id', '')} — {title}")
+            lines.append(f"- **Sévérité**: {severity} | **CVSS**: {cvss} | **Statut**: {validation}")
+            if file_path:
+                lines.append(f"- **Fichier**: `{file_path}`" + (f" | **Ligne**: {line}" if line else ""))
+            if cwe:
+                lines.append(f"- **CWE**: {cwe}")
+            if description:
+                lines.append(f"\n**Description**\n\n{description}")
+            if impact:
+                lines.append(f"\n**Impact**\n\n{impact}")
+            if proof:
+                lines.append(f"\n**Preuve**\n\n{proof}")
+            if code_snippet:
+                lines.append(f"\n**Code concerné**\n\n```php\n{code_snippet}\n```")
+            if recommendation:
+                lines.append(f"\n**Recommandation**\n\n{recommendation}")
+            if remediation:
+                lines.append(f"\n**Correction**\n\n{remediation}")
+            lines.append("")
+
+    return "\n".join(lines)
+
+
 @router.post("/{audit_id}/callback", include_in_schema=False)
-def analysis_callback(audit_id: uuid.UUID, body: CallbackBody, db: Session = Depends(get_db)):
+def analysis_callback(audit_id: uuid.UUID, body: dict, db: Session = Depends(get_db)):
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
 
-    if body.error:
+    error = body.get("error")
+    if error:
         audit.status = AuditStatus.FAILED
-        audit.error_message = body.error
+        audit.error_message = str(error)
         audit.completed_at = datetime.now(timezone.utc)
         db.commit()
         return {"status": "failed"}
 
-    audit.report_markdown = body.report_markdown
+    report_markdown = body.get("report_markdown")
+    if not report_markdown:
+        vulns = body.get("vulnerabilities", [])
+        if isinstance(vulns, list):
+            report_markdown = _build_markdown_from_vulns(
+                vulns,
+                summary=body.get("summary", ""),
+                metrics=body.get("metrics"),
+            )
+        else:
+            report_markdown = "# Rapport d'Audit\n\n*Aucun détail disponible*"
+
+    audit.report_markdown = report_markdown
     audit.status = AuditStatus.COMPLETED
     audit.completed_at = datetime.now(timezone.utc)
 
-    if body.vulnerabilities:
-        audit.vulnerabilities_critical = body.vulnerabilities.get("critical", 0)
-        audit.vulnerabilities_high = body.vulnerabilities.get("high", 0)
-        audit.vulnerabilities_medium = body.vulnerabilities.get("medium", 0)
-        audit.vulnerabilities_low = body.vulnerabilities.get("low", 0)
+    vulns_dict = body.get("vulnerabilities")
+    if isinstance(vulns_dict, dict):
+        audit.vulnerabilities_critical = vulns_dict.get("critical", 0)
+        audit.vulnerabilities_high = vulns_dict.get("high", 0)
+        audit.vulnerabilities_medium = vulns_dict.get("medium", 0)
+        audit.vulnerabilities_low = vulns_dict.get("low", 0)
     else:
-        parsed = parse_vulnerabilities_from_markdown(body.report_markdown)
-        audit.vulnerabilities_critical = parsed["critical"]
-        audit.vulnerabilities_high = parsed["high"]
-        audit.vulnerabilities_medium = parsed["medium"]
-        audit.vulnerabilities_low = parsed["low"]
+        metrics = body.get("metrics", {})
+        if metrics.get("critical") is not None:
+            audit.vulnerabilities_critical = metrics.get("critical", 0)
+            audit.vulnerabilities_high = metrics.get("high", 0)
+            audit.vulnerabilities_medium = metrics.get("medium", 0)
+            audit.vulnerabilities_low = metrics.get("low", 0)
+        else:
+            parsed = parse_vulnerabilities_from_markdown(report_markdown)
+            audit.vulnerabilities_critical = parsed["critical"]
+            audit.vulnerabilities_high = parsed["high"]
+            audit.vulnerabilities_medium = parsed["medium"]
+            audit.vulnerabilities_low = parsed["low"]
 
-    if body.docker_success is not None:
-        audit.docker_status = DockerStatus.SUCCESS if body.docker_success else DockerStatus.FAILED
+    docker_success = body.get("docker_success")
+    if docker_success is not None:
+        audit.docker_status = DockerStatus.SUCCESS if docker_success else DockerStatus.FAILED
 
     db.commit()
     return {"status": "completed"}

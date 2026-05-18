@@ -39,6 +39,7 @@ _active_jobs: dict[str, datetime] = {}
 
 
 class AnalyzeRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     audit_id: str
     user_id: str
     callback_url: str
