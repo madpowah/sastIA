@@ -54,6 +54,8 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
     DEFAULT_MODEL = "opencode-go/deepseek-v4-flash"
 
     model = model_id or os.environ.get("OPENCODE_MODEL", DEFAULT_MODEL)
+    if model and "/" not in model:
+        model = f"opencode-go/{model}"
     opencode_cmd = _find_opencode()
     cmd = [*opencode_cmd, "run", prompt, "--agent", "SastIA_manager", "--model", model, "--dir", code_dir, "--dangerously-skip-permissions"]
 
