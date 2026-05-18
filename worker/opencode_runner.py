@@ -70,9 +70,6 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
         "--model", model,
         "--dir", code_dir,
         "--dangerously-skip-permissions",
-        "--allow-read", code_dir,
-        "--allow-write", audit_dir,
-        "--yes",
     ]
 
     print(f"[opencode] Launching SastIA_manager agent with model {model}...")
