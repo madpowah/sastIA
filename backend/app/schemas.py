@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
-from app.models import AuditStatus, DockerStatus, PaymentStatus
+from app.models import AuditStatus, DockerStatus
 
 
 class UserCreate(BaseModel):
@@ -83,29 +83,6 @@ class AuditListResponse(BaseModel):
     total_vulnerabilities: int
     created_at: datetime
     completed_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-
-class PaymentIntentRequest(BaseModel):
-    audit_id: UUID
-    price_cents: int
-
-
-class PaymentIntentResponse(BaseModel):
-    client_secret: str
-    payment_id: UUID
-    amount: int
-
-
-class PaymentResponse(BaseModel):
-    id: UUID
-    audit_id: UUID
-    amount: int
-    currency: str
-    status: PaymentStatus
-    created_at: datetime
 
     class Config:
         from_attributes = True

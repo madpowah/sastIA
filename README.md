@@ -1,4 +1,4 @@
-# SAST IA — Plateforme d'Audit de Sécurité Automatisé
+# SAST IA — Analyse de Sécurité Automatisée (Open Source)
 
 > Analyse statique de code, validation Docker, et rapports détaillés propulsés par l'IA.
 
@@ -16,10 +16,10 @@
 ┌──────────────────────────────────────────────────────────┐
 │                    Backend (FastAPI)                       │
 │  port 8000                                                │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌─────────────┐ │
-│  │ Auth     │ │ Audits   │ │ Payments │ │ Reports     │ │
-│  │ JWT/bcrypt│ │ CRUD     │ │ Stripe   │ │ Markdown/PDF│ │
-│  └──────────┘ └──────────┘ └──────────┘ └─────────────┘ │
+│  ┌──────────┐ ┌──────────┐ ┌─────────────┐              │
+│  │ Auth     │ │ Audits   │ │ Reports     │              │
+│  │ JWT/bcrypt│ │ CRUD     │ │ Markdown/PDF│              │
+│  └──────────┘ └──────────┘ └─────────────┘              │
 │  ┌──────────────────────────────────────────────────────┐ │
 │  │ SQLAlchemy + SQLite (dev) / PostgreSQL (prod)        │ │
 │  └──────────────────────────────────────────────────────┘ │
@@ -49,13 +49,12 @@ sastIA/
 │   │   ├── main.py             # Point d'entrée FastAPI
 │   │   ├── config.py           # Configuration (settings, env)
 │   │   ├── database.py         # SQLAlchemy engine + session
-│   │   ├── models.py           # User, Audit, Payment
+│   │   ├── models.py           # User, Audit
 │   │   ├── schemas.py          # Pydantic validation
 │   │   ├── auth.py             # JWT + bcrypt
 │   │   ├── routers/
 │   │   │   ├── auth.py         # Register, Login, Me
 │   │   │   ├── audits.py       # CRUD, upload, callback, dispatch
-│   │   │   ├── payments.py     # Paiement Stripe
 │   │   │   └── reports.py      # Rapport + PDF
 │   │   └── services/
 │   │       ├── analysis.py     # Payload worker (legacy)
@@ -66,7 +65,6 @@ sastIA/
 ├── frontend/                   # Application React
 │   ├── src/
 │   │   ├── pages/
-│   │   │   ├── Landing.tsx      # Page d'accueil marketing
 │   │   │   ├── Login.tsx        # Connexion
 │   │   │   ├── Register.tsx     # Création de compte
 │   │   │   ├── Dashboard.tsx    # Stats + vulnérabilités
@@ -110,7 +108,6 @@ sastIA/
 | **Validation Docker** | Build + test d'exploitation de l'image |
 | **Rapports Markdown** | Rapport complet avec tableau des vulnérabilités |
 | **Export PDF** | Téléchargement PDF formaté (WeasyPrint) |
-| **Paiement Stripe** | 29€ analyse code / 99€ analyse complète |
 | **Callback worker** | Pipeline asynchrone backend → worker → callback |
 | **Polling temps réel** | Le frontend interroge le statut toutes les 10s |
 
@@ -119,11 +116,10 @@ sastIA/
 ## Flux utilisateur
 
 ```
-1. Landing page → inscription → dashboard
-2. "Nouvel audit" → wizard en 3 étapes
+1. Connexion / inscription → dashboard
+2. "Nouvel audit" → wizard en 2 étapes
    ├── Étape 1 : Nom + description
-   ├── Étape 2 : Upload code ZIP / URL Git
-   └── Étape 3 : Choix analyse (code 29€ / code+Docker 99€)
+   └── Étape 2 : Upload code ZIP / URL Git
 3. Statut : pending → analyzing_code → (analyzing_docker) → completed
 4. Dashboard → voir les vulnérabilités par sévérité
 5. Rapport Markdown → visualisé dans l'interface
@@ -167,14 +163,6 @@ sastIA/
 | `GET` | `/api/reports/{id}` | Rapport Markdown |
 | `GET` | `/api/reports/{id}/pdf` | Télécharger le PDF |
 
-### Paiement
-
-| Méthode | Endpoint | Corps |
-|---|---|---|
-| `POST` | `/api/payments/create-intent` | `{audit_id, price_cents}` |
-| `POST` | `/api/payments/{id}/confirm` | Confirmer le paiement |
-| `GET` | `/api/payments/` | Historique des paiements |
-
 ### Worker
 
 | Méthode | Endpoint | Corps |
@@ -217,30 +205,9 @@ created_at          DateTime
 completed_at        DateTime?
 ```
 
-### Payment
-```
-id                      UUID (PK)
-audit_id                UUID (FK → audits)
-user_id                 UUID (FK → users)
-amount                  Integer (cents)
-currency                String (EUR)
-status                  Enum: pending | completed | failed | refunded
-payment_method          Enum: card | stripe
-stripe_payment_intent_id String?
-created_at              DateTime
-```
-
 ---
 
 ## Interfaces Frontend
-
-### Landing (`/`)
-- Hero section avec animation gradient
-- Statistiques (10k+ analyses, 98% précision, <5min)
-- Grille des 6 fonctionnalités principales
-- Section "Comment ça fonctionne" (3 étapes)
-- Tarifs (29€ / 99€)
-- CTA final + footer
 
 ### Login / Register (`/login`, `/register`)
 - Design épuré, fond gradient
@@ -256,10 +223,9 @@ created_at              DateTime
 - Rafraîchissement automatique
 
 ### Nouvel audit (`/audits/new`)
-- Wizard 3 étapes avec indicateur de progression
+- Wizard 2 étapes avec indicateur de progression
   - Étape 1 : Nom + description
   - Étape 2 : Glisser-déposer upload ou URL Git
-  - Étape 3 : Choix analyse code (29€) ou complète Docker (99€)
 
 ### Liste des audits (`/audits`)
 - Filtres par statut (Tous, En attente, Analyse code, Analyse Docker, Terminés, Échecs)
@@ -501,12 +467,4 @@ Le backend enverra le job au worker qui :
 
 ## Licence
 
-Projet privé — SAST IA
-
-## Redirection port
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=3000 connectaddress=172.17.201.147 connectport=3000
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=8000 connectaddress=172.17.201.147 connectport=8000
-
-## Remise en état
-netsh interface portproxy delete v4tov4 listenport=3000
-netsh interface portproxy delete v4tov4 listenport=8000
+MIT

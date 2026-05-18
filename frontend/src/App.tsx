@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AdminRoute } from './components/AdminRoute'
-import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -14,18 +13,10 @@ import AdminUsers from './pages/admin/AdminUsers'
 import AdminAudits from './pages/admin/AdminAudits'
 import AdminAuditDetail from './pages/admin/AdminAuditDetail'
 import AdminUserDetail from './pages/admin/AdminUserDetail'
-import { useAuth } from './context/AuthContext'
-
-function HomeRedirect() {
-  const { user } = useAuth()
-  if (user) return <Navigate to="/dashboard" replace />
-  return <Landing />
-}
-
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomeRedirect />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route

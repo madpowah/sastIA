@@ -7,3 +7,4 @@ __pycache__/
 .opencode/
 .DS_Store
 node_modules/
+*.db

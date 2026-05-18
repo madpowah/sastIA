@@ -6,14 +6,12 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import {
   Upload,
-  Github,
   FileCode,
   Shield,
   Link as LinkIcon,
   CheckCircle,
   AlertCircle,
   Server,
-  Cpu,
 } from 'lucide-react'
 
 export default function NewAudit() {
@@ -67,14 +65,14 @@ export default function NewAudit() {
 
         {/* Steps */}
         <div className="flex items-center gap-4 mb-8">
-          {[1, 2, 3].map((s) => (
+          {[1, 2].map((s) => (
             <div key={s} className="flex items-center gap-4 flex-1">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${
                 s <= step ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-400'
               }`}>
                 {s < step ? <CheckCircle className="w-5 h-5" /> : s}
               </div>
-              <div className={`h-0.5 flex-1 ${s < step ? 'bg-primary-600' : 'bg-gray-200'}`} />
+              {s < 2 && <div className={`h-0.5 flex-1 ${s < step ? 'bg-primary-600' : 'bg-gray-200'}`} />}
             </div>
           ))}
         </div>
@@ -175,61 +173,22 @@ export default function NewAudit() {
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className="flex justify-between mt-8">
-                <Button type="button" variant="outline" onClick={() => setStep(1)}>
-                  Retour
-                </Button>
-                <Button type="button" onClick={() => setStep(3)}>
-                  Suivant
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          {step === 3 && (
-            <Card>
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">Type d'analyse</h2>
-              <div className="space-y-4">
-                <div
-                  className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
-                    !formData.docker_analysis_enabled
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => setFormData({ ...formData, docker_analysis_enabled: false })}
-                >
-                  <div className="flex items-start gap-4">
-                    <Cpu className={`w-8 h-8 ${!formData.docker_analysis_enabled ? 'text-primary-600' : 'text-gray-400'}`} />
+                <div className="border-t border-gray-200 pt-6">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.docker_analysis_enabled}
+                      onChange={(e) => setFormData({ ...formData, docker_analysis_enabled: e.target.checked })}
+                      className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
                     <div>
-                      <p className="font-semibold text-gray-900">Analyse de code uniquement — 29€</p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Analyse statique complète du code source. Idéal pour une vérification rapide.
-                        Rapport détaillé avec scores CVSS et recommandations.
+                      <p className="font-medium text-gray-900">Validation Docker</p>
+                      <p className="text-sm text-gray-500">
+                        Construire et tester l'application dans un container isolé
                       </p>
                     </div>
-                  </div>
-                </div>
-
-                <div
-                  className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
-                    formData.docker_analysis_enabled
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => setFormData({ ...formData, docker_analysis_enabled: true })}
-                >
-                  <div className="flex items-start gap-4">
-                    <Server className={`w-8 h-8 ${formData.docker_analysis_enabled ? 'text-primary-600' : 'text-gray-400'}`} />
-                    <div>
-                      <p className="font-semibold text-gray-900">Analyse complète + Docker — 99€</p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Analyse de code + validation de l'image Docker avec tests d'exploitation réels.
-                        Recommandé pour un audit de sécurité complet avant mise en production.
-                      </p>
-                    </div>
-                  </div>
+                  </label>
                 </div>
               </div>
 
@@ -241,7 +200,7 @@ export default function NewAudit() {
               )}
 
               <div className="flex justify-between mt-8">
-                <Button type="button" variant="outline" onClick={() => setStep(2)}>
+                <Button type="button" variant="outline" onClick={() => setStep(1)}>
                   Retour
                 </Button>
                 <Button type="submit" loading={loading} icon={<Shield className="w-4 h-4" />}>

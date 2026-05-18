@@ -21,18 +21,6 @@ class DockerStatus(str, enum.Enum):
     FAILED = "failed"
 
 
-class PaymentStatus(str, enum.Enum):
-    PENDING = "pending"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    REFUNDED = "refunded"
-
-
-class PaymentMethod(str, enum.Enum):
-    CARD = "card"
-    STRIPE = "stripe"
-
-
 class User(Base):
     __tablename__ = "users"
 
@@ -47,7 +35,6 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     audits = relationship("Audit", back_populates="user", cascade="all, delete-orphan")
-    payments = relationship("Payment", back_populates="user", cascade="all, delete-orphan")
 
 
 class Audit(Base):
@@ -75,7 +62,6 @@ class Audit(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="audits")
-    payments = relationship("Payment", back_populates="audit", cascade="all, delete-orphan")
 
     @property
     def total_vulnerabilities(self) -> int:
@@ -84,19 +70,4 @@ class Audit(Base):
                 self.vulnerabilities_info)
 
 
-class Payment(Base):
-    __tablename__ = "payments"
 
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    audit_id = Column(Uuid, ForeignKey("audits.id"), nullable=False)
-    user_id = Column(Uuid, ForeignKey("users.id"), nullable=False)
-    amount = Column(Integer, nullable=False)
-    currency = Column(String(3), default="EUR")
-    status = Column(String(50), default=PaymentStatus.PENDING.value, nullable=False)
-    payment_method = Column(String(50), default=PaymentMethod.STRIPE.value, nullable=False)
-    stripe_payment_intent_id = Column(String(255), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    audit = relationship("Audit", back_populates="payments")
-    user = relationship("User", back_populates="payments")
