@@ -15,6 +15,23 @@ from opencode_runner import run_manager_agent
 WORK_DIR = Path(os.getenv("WORK_DIR", "/tmp/sastia-worker"))
 WORK_DIR.mkdir(parents=True, exist_ok=True)
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+AGENTS_SRC = PROJECT_ROOT / ".opencode" / "agents"
+AGENTS_DST = Path(os.path.expanduser("~/.config/opencode/agents"))
+
+
+def _sync_agents():
+    if not AGENTS_SRC.exists():
+        return
+    AGENTS_DST.mkdir(parents=True, exist_ok=True)
+    for f in AGENTS_SRC.glob("*.md"):
+        dst = AGENTS_DST / f.name
+        if not dst.exists() or dst.stat().st_mtime < f.stat().st_mtime:
+            dst.write_text(f.read_text())
+
+
+_sync_agents()
+
 app = FastAPI(title="SAST IA Worker", version="1.0.0")
 
 # ── In-memory active jobs ──────────────────────────────
