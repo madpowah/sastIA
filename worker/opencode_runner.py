@@ -28,12 +28,17 @@ async def run_manager_agent(
 
     source_desc = repo_url or f"fichier uploadé (extrait dans {code_dir})"
 
+    report_language_instruction = {
+        "fr": "Le rapport final DOIT être rédigé en français.",
+        "en": "The final report MUST be written in English.",
+    }.get(report_language, "The final report MUST be written in English.")
+
     prompt = f"""Tu es SastIA_manager, l'orchestrateur d'audit de sécurité.
 
 Le code source à analyser se trouve ici : {code_dir}
 Il provient de : {source_desc}
-    L'ID de l'audit est : {audit_id}
-    La langue du rapport doit être : {report_language.upper()} (français ou english)
+L'ID de l'audit est : {audit_id}
+{report_language_instruction}
 
     Consignes :
 1. Active @SastIA_docker en lui indiquant le chemin {code_dir} pour qu'il mette en place l'environnement de test
