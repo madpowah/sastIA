@@ -22,7 +22,7 @@ async def run_manager_agent(
     timeout: int = 7200,
 ) -> str:
     audit_dir = os.path.dirname(code_dir)
-    log_file = os.path.join(audit_dir, "opencode.log")
+    worker_log = os.path.join(audit_dir, "opencode.log")
     partial_file = os.path.join(audit_dir, "agent-partial.md")
 
     source_desc = repo_url or f"fichier uploadé (extrait dans {code_dir})"
@@ -57,17 +57,29 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
     if model and "/" not in model:
         model = f"opencode-go/{model}"
     opencode_cmd = _find_opencode()
-    cmd = [*opencode_cmd, "run", prompt, "--agent", "SastIA_manager", "--model", model, "--dir", code_dir, "--dangerously-skip-permissions"]
+    cmd = [
+        *opencode_cmd, "run", prompt,
+        "--agent", "SastIA_manager",
+        "--model", model,
+        "--dir", code_dir,
+        "--dangerously-skip-permissions",
+        "--allow-read", code_dir,
+        "--allow-write", audit_dir,
+        "--yes",
+    ]
 
     print(f"[opencode] Launching SastIA_manager agent with model {model}...")
     print(f"[opencode] Code dir: {code_dir}")
     print(f"[opencode] Callback: {callback_url}")
-    print(f"[opencode] Log file: {log_file}")
-    print(f"[opencode] Override via OPENCODE_MODEL env var")
+    print(f"[opencode] Log file: {worker_log}")
+    print(f"[opencode] Command: {' '.join(cmd[:4])} ...")
 
     collected_lines: list[str] = []
+    save_interval = 30
+    last_save = asyncio.get_event_loop().time()
 
     async def _stream(stream_name: str, stream: asyncio.StreamReader | None, log_f):
+        nonlocal last_save
         if stream is None:
             return
         while True:
@@ -79,6 +91,15 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
             log_f.flush()
             collected_lines.append(text)
 
+            now = asyncio.get_event_loop().time()
+            if now - last_save > save_interval:
+                last_save = now
+                partial = "".join(collected_lines[-200:])
+                try:
+                    Path(partial_file).write_text(partial, encoding="utf-8")
+                except OSError:
+                    pass
+
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -87,9 +108,10 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
             cwd=code_dir,
         )
 
-        with open(log_file, "w", encoding="utf-8") as lf:
+        with open(worker_log, "w", encoding="utf-8") as lf:
             lf.write(f"# opencode log — audit {audit_id}\n")
-            lf.write(f"# started at {asyncio.get_event_loop().time()}\n\n")
+            import time as ttime
+            lf.write(f"# started at {ttime.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             lf.flush()
 
             stdout_task = asyncio.create_task(_stream("stdout", proc.stdout, lf))
@@ -110,7 +132,7 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
                     Path(partial_file).write_text(partial, encoding="utf-8")
                 raise RuntimeError(
                     f"SastIA_manager agent timed out after {timeout}s. "
-                    f"Log: {log_file} (lines collected: {len(collected_lines)})"
+                    f"Log: {worker_log} (lines collected: {len(collected_lines)})"
                 )
 
         return_code = await proc.wait()

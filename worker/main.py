@@ -55,14 +55,29 @@ def _write_meta(audit_id: str, **kwargs):
     path.write_text(json.dumps(data, indent=2, default=str))
 
 
+def _find_log(audit_id: str) -> Optional[Path]:
+    candidates = [
+        WORK_DIR / audit_id / "opencode.log",
+        WORK_DIR / audit_id / "code" / "opencode.log",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+
 def _partial_log(audit_id: str) -> str:
-    log_path = WORK_DIR / audit_id / "opencode.log"
-    partial_path = WORK_DIR / audit_id / "agent-partial.md"
     parts = []
-    if log_path.exists():
+    log_path = _find_log(audit_id)
+    if log_path:
         parts.append(log_path.read_text(encoding="utf-8", errors="replace"))
-    if partial_path.exists():
-        parts.append("\n\n## AGENT OUTPUT\n\n" + partial_path.read_text(encoding="utf-8", errors="replace"))
+
+    for partial_name in ["agent-partial.md"]:
+        for base in [WORK_DIR / audit_id, WORK_DIR / audit_id / "code"]:
+            p = base / partial_name
+            if p.exists():
+                parts.append(f"\n\n## AGENT OUTPUT ({p.name})\n\n" + p.read_text(encoding="utf-8", errors="replace"))
+
     return "\n".join(parts)
 
 
