@@ -22,13 +22,16 @@ if [ -n "$MISSING" ]; then
 fi
 echo "  -> All found"
 
-# Optional: install libpq-dev for psycopg2
+# Optional: install libpq-dev + python3-dev for psycopg2
 if command -v sudo >/dev/null 2>&1 && apt-get --version >/dev/null 2>&1; then
-    if ! dpkg -l libpq-dev >/dev/null 2>&1; then
-        echo "  -> Installing libpq-dev (for PostgreSQL driver)..."
-        sudo apt-get install -y -qq libpq-dev 2>/dev/null || echo "  -> (skipped, SQLite will be used)"
+    MISSING_DEV=""
+    dpkg -l libpq-dev >/dev/null 2>&1 || MISSING_DEV="libpq-dev"
+    dpkg -l python3-dev >/dev/null 2>&1 || MISSING_DEV="$MISSING_DEV python3-dev"
+    if [ -n "$MISSING_DEV" ]; then
+        echo "  -> Installing$MISSING_DEV (for PostgreSQL driver)..."
+        sudo apt-get install -y -qq $MISSING_DEV 2>/dev/null || echo "  -> (skipped, SQLite will be used)"
     else
-        echo "  -> libpq-dev already installed"
+        echo "  -> build dependencies already installed"
     fi
 fi
 
