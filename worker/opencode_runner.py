@@ -65,10 +65,12 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
         model = f"opencode-go/{model}"
     opencode_cmd = _find_opencode()
     cmd = [
-        *opencode_cmd, "run", prompt,
+        *opencode_cmd, "run",
+        "--prompt", prompt,
         "--model", model,
         "--dir", code_dir,
         "--dangerously-skip-permissions",
+        "--print-logs",
     ]
 
     print(f"[opencode] Launching agent with model {model}...")
