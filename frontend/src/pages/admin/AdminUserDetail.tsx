@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Users, Mail, Building2, Calendar, Shield, ShieldOff } from 'lucide-react'
+import { ArrowLeft, Users, Mail, Building2, Calendar, Shield, ShieldOff, Key } from 'lucide-react'
 import {
   getAdminUser,
   patchAdminUser,
+  resetAdminUserPassword,
   type AdminUser,
   type AdminAudit,
 } from '../../api/admin'
 import { DashboardLayout } from '../../components/Layout'
+import { useLanguage } from '../../i18n/LanguageContext'
+import { Button } from '../../components/ui/Button'
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -32,10 +35,14 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function AdminUserDetailPage() {
+  const { t } = useLanguage()
   const { id } = useParams<{ id: string }>()
   const [user, setUser] = useState<AdminUser | null>(null)
   const [audits, setAudits] = useState<AdminAudit[]>([])
   const [loading, setLoading] = useState(true)
+  const [resetPw, setResetPw] = useState('')
+  const [resetSaving, setResetSaving] = useState(false)
+  const [resetMsg, setResetMsg] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -58,6 +65,21 @@ export default function AdminUserDetailPage() {
     if (!user) return
     const updated = await patchAdminUser(user.id, { is_admin: user.is_admin ? 0 : 1 })
     setUser(updated)
+  }
+
+  const handleResetPassword = async () => {
+    if (!user || resetPw.length < 8) return
+    setResetSaving(true)
+    setResetMsg('')
+    try {
+      await resetAdminUserPassword(user.id, resetPw)
+      setResetMsg(t('admin.passwordReset'))
+      setResetPw('')
+    } catch (err: any) {
+      setResetMsg(err.response?.data?.detail || t('common.error'))
+    } finally {
+      setResetSaving(false)
+    }
   }
 
   if (loading) {
@@ -143,6 +165,34 @@ export default function AdminUserDetailPage() {
               <p className="text-xs text-gray-500">Audits</p>
               <p className="text-sm font-medium mt-1">{audits.length}</p>
             </div>
+          </div>
+        </div>
+
+        {/* Reset password */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Key className="w-5 h-5 text-primary-600" />
+            {t('admin.resetPassword')}
+          </h2>
+          {resetMsg && (
+            <p className={`text-sm mb-4 ${resetMsg.includes(t('admin.passwordReset')) ? 'text-green-600' : 'text-red-600'}`}>
+              {resetMsg}
+            </p>
+          )}
+          <div className="flex gap-3 items-end">
+            <div className="flex-1">
+              <input
+                type="password"
+                value={resetPw}
+                onChange={(e) => setResetPw(e.target.value)}
+                className="input-field"
+                placeholder={t('admin.newPasswordPlaceholder')}
+                minLength={8}
+              />
+            </div>
+            <Button onClick={handleResetPassword} loading={resetSaving} disabled={resetPw.length < 8}>
+              {t('admin.resetPasswordBtn')}
+            </Button>
           </div>
         </div>
 

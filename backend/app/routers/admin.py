@@ -11,8 +11,9 @@ from app.schemas import (
     AdminAuditResponse,
     AdminDashboardStats,
     PaginatedResponse,
+    ResetPasswordRequest,
 )
-from app.auth import get_admin_user
+from app.auth import get_admin_user, hash_password
 from app.config import get_settings
 
 settings = get_settings()
@@ -267,3 +268,21 @@ def retry_audit(
 
     _dispatch_to_worker(audit, audit.user)
     return {"status": "dispatched", "audit_id": str(audit.id)}
+
+
+@router.post("/users/{user_id}/reset-password")
+def reset_user_password(
+    user_id: uuid.UUID,
+    data: ResetPasswordRequest,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    user.password_hash = hash_password(data.new_password)
+    db.commit()
+    return {"status": "ok", "email": user.email}

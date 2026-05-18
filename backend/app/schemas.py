@@ -190,3 +190,12 @@ class PaginatedResponse(BaseModel):
     total: int
     page: int
     size: int
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str

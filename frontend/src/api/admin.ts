@@ -84,3 +84,8 @@ export async function retryAdminAudit(id: string): Promise<{ status: string; aud
   const { data } = await api.post(`/admin/audits/${id}/retry`)
   return data
 }
+
+export async function resetAdminUserPassword(userId: string, newPassword: string): Promise<{ status: string; email: string }> {
+  const { data } = await api.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword })
+  return data
+}
