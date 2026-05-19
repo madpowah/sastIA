@@ -100,8 +100,11 @@ fi
 echo "[7/6] Creating default admin user"
 cd backend
 ../venv/bin/python -c "
-import sqlite3, uuid, bcrypt, os
-db_path = 'sastia.db'
+import sys, os
+sys.path.insert(0, '.')
+from app.database import init_db
+init_db()
+
 conn = sqlite3.connect(db_path)
 cur = conn.execute(\"SELECT id FROM users WHERE email = 'admin@sastia.com'\")
 if not cur.fetchone():
