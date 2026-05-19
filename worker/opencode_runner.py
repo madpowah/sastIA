@@ -25,6 +25,7 @@ async def run_manager_agent(
     audit_dir = os.path.dirname(code_dir)
     worker_log = os.path.join(audit_dir, "opencode.log")
     partial_file = os.path.join(audit_dir, "agent-partial.md")
+    prompt_file = os.path.join(audit_dir, "prompt.txt")
 
     source_desc = repo_url or f"fichier uploadé (extrait dans {code_dir})"
 
@@ -64,8 +65,10 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
     if model and "/" not in model:
         model = f"opencode-go/{model}"
     opencode_cmd = _find_opencode()
+    Path(prompt_file).write_text(prompt, encoding="utf-8")
     cmd = [
-        *opencode_cmd, "run", prompt,
+        *opencode_cmd, "run",
+        "--file", prompt_file,
         "--model", model,
         "--dir", code_dir,
         "--dangerously-skip-permissions",
