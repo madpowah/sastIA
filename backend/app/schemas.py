@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
     company: Optional[str] = None
     is_active: int
     is_admin: int
+    must_change_password: int = 0
     created_at: datetime
 
     class Config:
@@ -201,3 +202,28 @@ class ChangePasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     new_password: str
+
+
+class AdminUserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+    company: Optional[str] = None
+    is_admin: bool = False
+
+
+class AvailableModelResponse(BaseModel):
+    id: UUID
+    model_id: str
+    name: str
+    provider: str
+    enabled: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AvailableModelToggle(BaseModel):
+    model_id: str
+    enabled: bool

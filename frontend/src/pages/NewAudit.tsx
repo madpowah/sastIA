@@ -4,7 +4,6 @@ import api from '../api/client'
 import { DashboardLayout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
-import { getProviderGroups, ProviderGroup, ModelInfo } from '../api/providers'
 import { useLanguage } from '../i18n/LanguageContext'
 import {
   Upload,
@@ -23,7 +22,7 @@ export default function NewAudit() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [providerGroups, setProviderGroups] = useState<ProviderGroup[]>([])
+  const [availableModels, setAvailableModels] = useState<{id: string; name: string; provider: string}[]>([])
   const [selectedProvider, setSelectedProvider] = useState('')
   const [formData, setFormData] = useState({
     name: '',
@@ -37,13 +36,18 @@ export default function NewAudit() {
   const [codeFile, setCodeFile] = useState<File | null>(null)
   const { t } = useLanguage()
 
-  const currentModels = providerGroups.find((g) => g.provider === selectedProvider)?.models || []
+  const providers = [...new Set(availableModels.map((m) => m.provider))]
+  const currentModels = selectedProvider ? availableModels.filter((m) => m.provider === selectedProvider) : []
+  if (!selectedProvider && providers.length > 0) {
+    // will be set in useEffect
+  }
 
   useEffect(() => {
-    getProviderGroups().then((groups) => {
-      setProviderGroups(groups)
-      if (groups.length > 0 && !selectedProvider) {
-        setSelectedProvider(groups[0].provider)
+    api.get('/admin/public/models').then(({ data }) => {
+      setAvailableModels(data)
+      if (data.length > 0) {
+        const provs = [...new Set(data.map((m: any) => m.provider))]
+        setSelectedProvider(provs[0])
       }
     }).catch(() => {})
   }, [])
@@ -229,9 +233,9 @@ export default function NewAudit() {
                           onChange={(e) => setSelectedProvider(e.target.value)}
                           className="input-field"
                         >
-                          {providerGroups.map((g) => (
-                            <option key={g.provider} value={g.provider}>
-                              {g.name}
+                          {providers.map((g) => (
+                            <option key={g} value={g}>
+                              {g}
                             </option>
                           ))}
                         </select>
@@ -251,7 +255,7 @@ export default function NewAudit() {
                       </div>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
-                      {t('audit.modelFormat')} : <code className="bg-gray-100 px-1 rounded">{selectedProvider || 'provider'}/{currentModels.find((m) => m.id === formData.model_id)?.id.split('/').slice(1).join('/') || 'modele'}</code>
+                      {t('audit.modelFormat')}: <code className="bg-gray-100 px-1 rounded">{formData.model_id || t('audit.defaultModel')}</code>
                     </p>
                   </div>
 

@@ -8,6 +8,7 @@ interface User {
   company?: string
   is_active: number
   is_admin: number
+  must_change_password?: number
   created_at: string
 }
 
@@ -16,7 +17,6 @@ interface AuthContextType {
   token: string | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (data: { email: string; password: string; full_name: string; company?: string }) => Promise<void>
   logout: () => void
 }
 
@@ -45,14 +45,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user)
   }
 
-  const register = async (registerData: { email: string; password: string; full_name: string; company?: string }) => {
-    const { data } = await api.post('/auth/register', registerData)
-    localStorage.setItem('token', data.access_token)
-    localStorage.setItem('user', JSON.stringify(data.user))
-    setToken(data.access_token)
-    setUser(data.user)
-  }
-
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -61,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

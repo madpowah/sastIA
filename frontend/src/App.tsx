@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AdminRoute } from './components/AdminRoute'
 import Login from './pages/Login'
-import Register from './pages/Register'
+import ChangePassword from './pages/ChangePassword'
 import Dashboard from './pages/Dashboard'
 import NewAudit from './pages/NewAudit'
 import AuditsList from './pages/AuditsList'
@@ -19,7 +19,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/change-password" element={<ChangePassword />} />
       <Route
         path="/dashboard"
         element={

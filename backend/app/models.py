@@ -31,6 +31,7 @@ class User(Base):
     company = Column(String(255), nullable=True)
     is_active = Column(Integer, default=1)
     is_admin = Column(Integer, default=0)
+    must_change_password = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -84,6 +85,17 @@ class Provider(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User")
+
+
+class AvailableModel(Base):
+    __tablename__ = "available_models"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    model_id = Column(String(255), nullable=False, unique=True)
+    name = Column(String(255), nullable=False)
+    provider = Column(String(255), nullable=False)
+    enabled = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 

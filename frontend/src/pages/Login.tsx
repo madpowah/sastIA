@@ -1,14 +1,13 @@
 import { useState, FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import { Shield, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { Button } from '../components/ui/Button'
-
 import { useLanguage } from '../i18n/LanguageContext'
+import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
   const { t } = useLanguage()
-  const { login } = useAuth()
+  const { login, user } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,7 +21,12 @@ export default function Login() {
     setLoading(true)
     try {
       await login(email, password)
-      navigate('/dashboard')
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+      if (storedUser.must_change_password) {
+        navigate('/change-password?force=1')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || t('auth.error'))
     } finally {
@@ -34,10 +38,10 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-3 mb-6">
+          <div className="inline-flex items-center gap-3 mb-6">
             <Shield className="w-10 h-10 text-primary-600" />
             <span className="text-2xl font-bold gradient-text">SAST IA</span>
-          </Link>
+          </div>
           <h1 className="text-3xl font-bold text-gray-900">{t('auth.welcome')}</h1>
           <p className="text-gray-500 mt-2">{t('auth.loginTitle')}</p>
         </div>
@@ -53,14 +57,14 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('auth.email')}</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input-field"
-                  placeholder={t('auth.emailPlaceholder')}
-                  required
-                />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-field"
+                placeholder={t('auth.emailPlaceholder')}
+                required
+              />
             </div>
 
             <div>
@@ -88,13 +92,6 @@ export default function Login() {
               {t('auth.login')}
             </Button>
           </form>
-
-          <p className="text-center text-sm text-gray-500 mt-6">
-            {t('auth.noAccount')}{' '}
-            <Link to="/register" className="text-primary-600 font-medium hover:text-primary-700">
-              {t('auth.registerLink')}
-            </Link>
-          </p>
         </div>
       </div>
     </div>

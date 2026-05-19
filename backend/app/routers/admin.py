@@ -1,3 +1,6 @@
+import os
+import subprocess
+import json
 import uuid
 import httpx
 from datetime import datetime, timezone, timedelta
@@ -5,13 +8,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
-from app.models import User, Audit, AuditStatus
+from app.models import User, Audit, AuditStatus, AvailableModel
 from app.schemas import (
     AdminUserResponse,
     AdminAuditResponse,
     AdminDashboardStats,
     PaginatedResponse,
     ResetPasswordRequest,
+    AdminUserCreate,
+    AvailableModelResponse,
+    AvailableModelToggle,
 )
 from app.auth import get_admin_user, hash_password
 from app.config import get_settings
@@ -175,6 +181,47 @@ def update_user(
     return AdminUserResponse.model_validate(user)
 
 
+@router.post("/users", status_code=status.HTTP_201_CREATED)
+def create_user(
+    data: AdminUserCreate,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    existing = db.query(User).filter(User.email == data.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    user = User(
+        email=data.email,
+        password_hash=hash_password(data.password),
+        full_name=data.full_name,
+        company=data.company,
+        is_admin=1 if data.is_admin else 0,
+        must_change_password=1,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return AdminUserResponse.model_validate(user)
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: uuid.UUID,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == admin_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    db.delete(user)
+    db.commit()
+
+
 # ── Audits ─────────────────────────────────────────────
 
 @router.get("/audits")
@@ -286,3 +333,80 @@ def reset_user_password(
     user.password_hash = hash_password(data.new_password)
     db.commit()
     return {"status": "ok", "email": user.email}
+
+
+# ── Models ──────────────────────────────────────────────
+
+@router.get("/models/refresh")
+def refresh_available_models(
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        result = subprocess.run(
+            ["opencode", "models"],
+            capture_output=True, text=True, timeout=30,
+        )
+        lines = result.stdout.strip().split("\n")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to run opencode models: {e}")
+
+    raw_models = [l.strip() for l in lines if l.strip() and "/" in l]
+
+    existing = {m.model_id for m in db.query(AvailableModel).all()}
+    for mid in raw_models:
+        if mid not in existing:
+            parts = mid.split("/", 1)
+            provider = parts[0] if len(parts) > 1 else "unknown"
+            name = parts[1] if len(parts) > 1 else mid
+            am = AvailableModel(model_id=mid, name=name, provider=provider, enabled=0)
+            db.add(am)
+    db.commit()
+
+    all_models = db.query(AvailableModel).order_by(AvailableModel.model_id).all()
+    return [AvailableModelResponse.model_validate(m) for m in all_models]
+
+
+@router.get("/models", response_model=list[AvailableModelResponse])
+def list_available_models(
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    models = db.query(AvailableModel).order_by(AvailableModel.model_id).all()
+    return [AvailableModelResponse.model_validate(m) for m in models]
+
+
+@router.get("/models/enabled", response_model=list[AvailableModelResponse])
+def list_enabled_models(
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    models = db.query(AvailableModel).filter(AvailableModel.enabled == 1).order_by(AvailableModel.model_id).all()
+    return [AvailableModelResponse.model_validate(m) for m in models]
+
+
+# ── Public endpoint (no admin required) ─────────────────
+
+@router.get("/public/models", response_model=list[dict])
+def public_enabled_models(
+    db: Session = Depends(get_db),
+):
+    models = db.query(AvailableModel).filter(AvailableModel.enabled == 1).order_by(AvailableModel.model_id).all()
+    return [{"id": m.model_id, "name": m.name, "provider": m.provider} for m in models]
+
+
+@router.post("/models/toggle")
+def toggle_model(
+    data: AvailableModelToggle,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    model = db.query(AvailableModel).filter(AvailableModel.model_id == data.model_id).first()
+    if not model:
+        model = AvailableModel(model_id=data.model_id, name=data.model_id, provider="unknown", enabled=0)
+        db.add(model)
+        db.flush()
+    model.enabled = 1 if data.enabled else 0
+    db.commit()
+    db.refresh(model)
+    return AvailableModelResponse.model_validate(model)

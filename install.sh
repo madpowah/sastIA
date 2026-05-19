@@ -96,6 +96,29 @@ if command -v docker >/dev/null 2>&1; then
     docker pull postgres:16-alpine --quiet 2>/dev/null || true
 fi
 
+# ── 7. Default admin user ──────────────────────────────
+echo "[7/6] Creating default admin user"
+cd backend
+../venv/bin/python -c "
+import sqlite3, uuid, bcrypt, os
+db_path = 'sastia.db'
+conn = sqlite3.connect(db_path)
+cur = conn.execute(\"SELECT id FROM users WHERE email = 'admin@sastia.com'\")
+if not cur.fetchone():
+    pw_hash = bcrypt.hashpw(b'admin', bcrypt.gensalt()).decode()
+    uid = uuid.uuid4().hex
+    conn.execute(
+        \"INSERT INTO users (id, email, password_hash, full_name, is_active, is_admin, must_change_password) VALUES (?, ?, ?, ?, 1, 1, 1)\",
+        (uid, 'admin@sastia.com', pw_hash, 'Administrator')
+    )
+    conn.commit()
+    print('  -> Created admin@sastia.com / admin (must change password)')
+else:
+    print('  -> admin@sastia.com already exists')
+conn.close()
+" 2>&1 || echo "  -> (skipped)"
+cd "$ROOT_DIR"
+
 echo ""
 echo "=== Installation complete ==="
 echo "Run ./start.sh to launch all services."
