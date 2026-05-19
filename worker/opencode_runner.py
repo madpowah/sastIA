@@ -68,11 +68,10 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
     Path(prompt_file).write_text(prompt, encoding="utf-8")
     cmd = [
         *opencode_cmd, "run",
-        "--file", prompt_file,
         "--model", model,
         "--dir", code_dir,
         "--dangerously-skip-permissions",
-        "--print-logs",
+        prompt,
     ]
 
     print(f"[opencode] Launching agent with model {model}...")
