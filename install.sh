@@ -99,14 +99,13 @@ fi
 # ── 7. Default admin user ──────────────────────────────
 echo "[7/6] Creating default admin user"
 cd backend
-../venv/bin/python -c "
-import sqlite3, uuid, bcrypt, os
+cat > /tmp/create_admin.py << 'PYEOF'
+import sqlite3, uuid, bcrypt
 from datetime import datetime, timezone
 
 db_path = 'sastia.db'
 conn = sqlite3.connect(db_path)
 
-# Create users table if not exists (backend creates other tables on startup)
 conn.execute('''CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
@@ -124,9 +123,9 @@ cur = conn.execute("SELECT id FROM users WHERE email = 'admin@sastia.com'")
 if not cur.fetchone():
     pw_hash = bcrypt.hashpw(b'admin', bcrypt.gensalt()).decode()
     uid = uuid.uuid4().hex
-    now = __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     conn.execute(
-        \"INSERT INTO users (id, email, password_hash, full_name, is_active, is_admin, must_change_password, created_at) VALUES (?, ?, ?, ?, 1, 1, 1, ?)\",
+        "INSERT INTO users (id, email, password_hash, full_name, is_active, is_admin, must_change_password, created_at) VALUES (?, ?, ?, ?, 1, 1, 1, ?)",
         (uid, 'admin@sastia.com', pw_hash, 'Administrator', now)
     )
     conn.commit()
@@ -134,7 +133,9 @@ if not cur.fetchone():
 else:
     print('  -> admin@sastia.com already exists')
 conn.close()
-" 2>&1 || echo "  -> (skipped)"
+PYEOF
+../venv/bin/python /tmp/create_admin.py 2>&1 || echo "  -> (skipped)"
+rm /tmp/create_admin.py
 cd "$ROOT_DIR"
 
 echo ""
