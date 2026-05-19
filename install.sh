@@ -100,12 +100,28 @@ fi
 echo "[7/6] Creating default admin user"
 cd backend
 ../venv/bin/python -c "
-import sys, os
-sys.path.insert(0, '.')
-from app.database import init_db
-init_db()
+import sqlite3, uuid, bcrypt, os
+from datetime import datetime, timezone
 
+db_path = 'sastia.db'
 conn = sqlite3.connect(db_path)
+
+# Create users table if not exists (backend creates other tables on startup)
+conn.execute('''CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    full_name TEXT NOT NULL,
+    company TEXT,
+    is_active INTEGER DEFAULT 1,
+    is_admin INTEGER DEFAULT 0,
+    must_change_password INTEGER DEFAULT 0,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+)''')
+
+cur = conn.execute(\"SELECT id FROM users WHERE email = 'admin@sastia.com'\")
+if not cur.fetchone():
 cur = conn.execute(\"SELECT id FROM users WHERE email = 'admin@sastia.com'\")
 if not cur.fetchone():
     pw_hash = bcrypt.hashpw(b'admin', bcrypt.gensalt()).decode()
