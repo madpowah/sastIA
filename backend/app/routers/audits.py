@@ -18,15 +18,18 @@ from app.config import get_settings
 
 def parse_vulnerabilities_from_markdown(markdown: str) -> dict:
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-    table_pattern = re.compile(
-        r"(?:critique|critical).*?[|]\s*(\d+)\s*$",
-        re.IGNORECASE | re.MULTILINE,
-    )
-    for severity, keyword in [("critical", r"critiqu"), ("high", r"[ée]lev"), ("medium", r"moyen"), ("low", r"basse")]:
-        pattern = rf"{keyword}.*?[|]\s*(\d+)\s*(?:\||$)"
-        match = re.search(pattern, markdown, re.IGNORECASE | re.MULTILINE | re.DOTALL)
-        if match:
-            counts[severity] = int(match.group(1))
+    for severity, keywords in [
+        ("critical", [r"critiqu", r"critical"]),
+        ("high", [r"[ée]lev", r"high"]),
+        ("medium", [r"moyen", r"medium"]),
+        ("low", [r"basse", r"low"]),
+    ]:
+        for kw in keywords:
+            pattern = rf"{kw}.*?[|]\s*(\d+)\s*(?:\||$)"
+            match = re.search(pattern, markdown, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+            if match:
+                counts[severity] = int(match.group(1))
+                break
     return counts
 
 settings = get_settings()
