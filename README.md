@@ -168,8 +168,8 @@ Password: admin (must change on first login)
 ### Worker
 
 | Method | Endpoint | Body |
-|---|---|---|
-| `POST` | `/analyze` | `{audit_id, callback_url, repo_url?, model_id?, report_language}` |
+|---|---|---|---|
+| `POST` | `/analyze` | `{audit_id, callback_url, repo_url?, code_path?, model_id?, report_language, docker_analysis}` |
 | `GET` | `/health` | Health check |
 
 ---
@@ -275,7 +275,7 @@ HTTP POST → Worker :9000/analyze
          ▼
 Worker runs: opencode run --model X --dir <code> ...
          │
-         ├─ @SastIA_docker     → build & start test container
+         ├─ (optional) @SastIA_docker → build & start test container
          ├─ @SastIA_analyzer   → OWASP + RCE + injection audit
          ├─ @SastIA_rapport    → generate final report
          │
