@@ -13,6 +13,7 @@ import {
   X,
   User,
   Settings,
+  Cpu,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -32,7 +33,12 @@ export function DashboardLayout({ children }: LayoutProps) {
     { name: t('nav.newAudit'), href: '/audits/new', icon: Search },
     { name: t('nav.myAudits'), href: '/audits', icon: FileText },
     { name: t('nav.settings'), href: '/settings', icon: Settings },
-    ...(user?.is_admin ? [{ name: t('nav.administration'), href: '/admin', icon: ShieldCheck }] : []),
+    ...(user?.is_admin
+      ? [
+          { name: t('nav.administration'), href: '/admin', icon: ShieldCheck },
+          { name: t('nav.models'), href: '/admin/models', icon: Cpu },
+        ]
+      : []),
   ]
 
   const handleLogout = () => {

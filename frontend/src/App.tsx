@@ -13,6 +13,7 @@ import AdminUsers from './pages/admin/AdminUsers'
 import AdminAudits from './pages/admin/AdminAudits'
 import AdminAuditDetail from './pages/admin/AdminAuditDetail'
 import AdminUserDetail from './pages/admin/AdminUserDetail'
+import AdminModels from './pages/admin/AdminModels'
 import Settings from './pages/Settings'
 export default function App() {
   return (
@@ -108,6 +109,14 @@ export default function App() {
         element={
           <AdminRoute>
             <AdminAuditDetail />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/models"
+        element={
+          <AdminRoute>
+            <AdminModels />
           </AdminRoute>
         }
       />

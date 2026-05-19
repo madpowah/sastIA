@@ -89,3 +89,42 @@ export async function resetAdminUserPassword(userId: string, newPassword: string
   const { data } = await api.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword })
   return data
 }
+
+export async function createAdminUser(body: {
+  email: string
+  password: string
+  full_name: string
+  company?: string
+  is_admin?: boolean
+}): Promise<AdminUser> {
+  const { data } = await api.post('/admin/users', body)
+  return data
+}
+
+export async function deleteAdminUser(userId: string): Promise<void> {
+  await api.delete(`/admin/users/${userId}`)
+}
+
+export interface AvailableModel {
+  id: string
+  model_id: string
+  name: string
+  provider: string
+  enabled: number
+  created_at: string
+}
+
+export async function getAdminModels(): Promise<AvailableModel[]> {
+  const { data } = await api.get('/admin/models')
+  return data
+}
+
+export async function refreshAdminModels(): Promise<AvailableModel[]> {
+  const { data } = await api.get('/admin/models/refresh')
+  return data
+}
+
+export async function toggleAdminModel(modelId: string, enabled: boolean): Promise<AvailableModel> {
+  const { data } = await api.post('/admin/models/toggle', { model_id: modelId, enabled })
+  return data
+}
