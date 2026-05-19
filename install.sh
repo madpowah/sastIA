@@ -107,9 +107,10 @@ cur = conn.execute(\"SELECT id FROM users WHERE email = 'admin@sastia.com'\")
 if not cur.fetchone():
     pw_hash = bcrypt.hashpw(b'admin', bcrypt.gensalt()).decode()
     uid = uuid.uuid4().hex
+    now = __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()
     conn.execute(
-        \"INSERT INTO users (id, email, password_hash, full_name, is_active, is_admin, must_change_password) VALUES (?, ?, ?, ?, 1, 1, 1)\",
-        (uid, 'admin@sastia.com', pw_hash, 'Administrator')
+        \"INSERT INTO users (id, email, password_hash, full_name, is_active, is_admin, must_change_password, created_at) VALUES (?, ?, ?, ?, 1, 1, 1, ?)\",
+        (uid, 'admin@sastia.com', pw_hash, 'Administrator', now)
     )
     conn.commit()
     print('  -> Created admin@sastia.com / admin (must change password)')
