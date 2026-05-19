@@ -38,9 +38,6 @@ export default function NewAudit() {
 
   const providers = [...new Set(availableModels.map((m) => m.provider))]
   const currentModels = selectedProvider ? availableModels.filter((m) => m.provider === selectedProvider) : []
-  if (!selectedProvider && providers.length > 0) {
-    // will be set in useEffect
-  }
 
   useEffect(() => {
     api.get('/admin/public/models').then(({ data }) => {
@@ -56,7 +53,7 @@ export default function NewAudit() {
     if (selectedProvider && currentModels.length > 0 && !currentModels.find((m) => m.id === formData.model_id)) {
       setFormData((prev) => ({ ...prev, model_id: currentModels[0].id }))
     }
-  }, [selectedProvider, providerGroups])
+  }, [selectedProvider, availableModels])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
