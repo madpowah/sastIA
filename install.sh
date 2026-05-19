@@ -120,9 +120,7 @@ conn.execute('''CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP
 )''')
 
-cur = conn.execute(\"SELECT id FROM users WHERE email = 'admin@sastia.com'\")
-if not cur.fetchone():
-cur = conn.execute(\"SELECT id FROM users WHERE email = 'admin@sastia.com'\")
+cur = conn.execute("SELECT id FROM users WHERE email = 'admin@sastia.com'")
 if not cur.fetchone():
     pw_hash = bcrypt.hashpw(b'admin', bcrypt.gensalt()).decode()
     uid = uuid.uuid4().hex
