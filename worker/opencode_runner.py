@@ -20,6 +20,7 @@ async def run_manager_agent(
     repo_url: str | None = None,
     model_id: str | None = None,
     report_language: str = "en",
+    docker_analysis: bool = False,
     timeout: int = 7200,
 ) -> str:
     audit_dir = os.path.dirname(code_dir)
@@ -34,6 +35,20 @@ async def run_manager_agent(
         "en": "The final report MUST be written in English.",
     }.get(report_language, "The final report MUST be written in English.")
 
+    docker_steps = ""
+    if docker_analysis:
+        docker_steps = f"""1. Active @SastIA_docker en lui indiquant le chemin {code_dir} pour qu'il mette en place l'environnement de test
+2. Active @SastIA_analyzer en lui fournissant le même chemin {code_dir} et les infos Docker pour l'audit de sécurité
+3. Active @SastIA_rapport pour produire le rapport final
+4. Envoie le rapport final à l'URL de callback : {callback_url}
+5. Supprime les environnements de test une fois l'audit terminé"""
+        docker_cleanup = "\n5. Supprime les environnements de test une fois l'audit terminé"
+    else:
+        docker_steps = f"""1. Passe l'étape @SastIA_docker (non requis pour cette analyse)
+2. Active @SastIA_analyzer en lui fournissant le chemin {code_dir} pour l'audit de sécurité (sans validation Docker)
+3. Active @SastIA_rapport pour produire le rapport final
+4. Envoie le rapport final à l'URL de callback : {callback_url}"""
+
     prompt = f"""Tu es SastIA_manager, l'orchestrateur d'audit de sécurité.
 
 Le code source à analyser se trouve ici : {code_dir}
@@ -42,11 +57,7 @@ L'ID de l'audit est : {audit_id}
 {report_language_instruction}
 
     Consignes :
-1. Active @SastIA_docker en lui indiquant le chemin {code_dir} pour qu'il mette en place l'environnement de test
-2. Active @SastIA_analyzer en lui fournissant le même chemin {code_dir} pour l'audit de sécurité
-3. Active @SastIA_rapport pour produire le rapport final
-4. Envoie le rapport final à l'URL de callback : {callback_url}
-5. Supprime les environnements de test une fois l'audit terminé
+{docker_steps}
 
 Le rapport DOIT contenir un tableau de synthèse avec le format suivant pour que les compteurs soient parsés automatiquement :
 

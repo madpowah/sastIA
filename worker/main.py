@@ -119,6 +119,7 @@ async def run_analysis(job: AnalyzeRequest):
             repo_url=job.repo_url,
             model_id=job.model_id,
             report_language=job.report_language,
+            docker_analysis=job.docker_analysis,
         )
         print(f"[worker] Analysis complete for audit {job.audit_id}")
         _write_meta(job.audit_id, status="completed", finished_at=datetime.now(timezone.utc).isoformat())
