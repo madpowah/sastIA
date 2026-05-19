@@ -43,7 +43,7 @@ Prend le rapport détaillé de @SastIA_analyzer et produit le rapport final form
     "medium": N,
     "low": N
   },
-  "summary_table": "| Severity | Count |\\n|----------|-------|\\n| Critical | N |\\n| High     | N |\\n| Medium   | N |\\n| Low      | N |",
+  "summary_table": "| Severity | Count |\n|----------|-------|\n| Critical | N |\n| High     | N |\n| Medium   | N |\n| Low      | N |",
   "vulnerabilities": [
     {
       "id": "V-01",
@@ -57,7 +57,8 @@ Prend le rapport détaillé de @SastIA_analyzer et produit le rapport final form
       "impact": "...",
       "recommendation": "...",
       "validation_status": "Validé|Non validé|Faux positif",
-      "proof": "Commande et résultat de l'exploit (si Validé)"
+      "proof": "Commande et résultat de l'exploit (si Validé)",
+      "code_snippet": "LE CODE VULNÉRABLE SANS LES MARQUEURS DE LANGAGE (pas de ```php au début)"
     }
   ],
   "recommendations": [
@@ -69,11 +70,14 @@ Prend le rapport détaillé de @SastIA_analyzer et produit le rapport final form
 ### Contraintes
 - Le `summary_table` DOIT être une chaîne contenant le tableau markdown exact pour parsing automatique
 - Chaque vulnérabilité DOIT inclure le `validation_status` fourni par @SastIA_analyzer
+- Le champ `code_snippet` NE DOIT PAS contenir les marqueurs ```php ou ``` en début/fin
+  - Mettre uniquement le code, pas les backticks ni le mot "php"
+  - Exemple correct : "code_snippet": "if (isset($_GET['id'])) { echo $_GET['id']; }"
+  - Exemple INCORRECT : "code_snippet": "```php\nif (isset($_GET['id'])) { echo $_GET['id']; }\n```"
 - Écris le fichier JSON au chemin indiqué par l'orchestrateur
 - Détail au maximum les informations techniques qui permettent de comprendre la vulnérabilité
-- Indique la ligne impactée à chaque vulnérabilité et reporte le code impacté via des balise code markdown
+- Indique la ligne impactée à chaque vulnérabilité et reporte le code impacté
 - Travaille la présentation pour qu'elle soit la plus marquante possible
-- Utilise des code couleur pour les gravités, Noir pour Critique / Rouge pour High / Orange pour medium / jaune pour Low
 
 ## Output
 - Fichier JSON contenant le rapport complet

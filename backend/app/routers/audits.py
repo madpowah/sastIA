@@ -233,10 +233,14 @@ def _build_markdown_from_vulns(vulns: list[dict], summary: str = "", metrics: Op
             description = v.get("description", "")
             impact = v.get("impact", "")
             recommendation = v.get("recommendation", "")
-            validation = v.get("validation_status", "")
+            validation = v.get("validation_status", "") or "Non validé"
             code_snippet = v.get("code_snippet", "")
             remediation = v.get("remediation", "")
             proof = v.get("proof", "")
+
+            if code_snippet:
+                code_snippet = re.sub(r'^```\w*\s*\n?', '', code_snippet)
+                code_snippet = re.sub(r'\n?```\s*$', '', code_snippet)
 
             lines.append(f"### {v.get('id', '')} — {title}")
             lines.append(f"- **Sévérité**: {severity} | **CVSS**: {cvss} | **Statut**: {validation}")

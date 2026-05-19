@@ -58,7 +58,14 @@ Chaque vulnérabilité DOIT contenir :
 - Affiche le code vulnérable et propose un code corrigé en indiquant bien en introduction que les corrections proposées doivent être validées par l'équipe de développement pour être optimisé
 - Si une vulnérabilité nécessite des droits admin ou root pour être exploitée, ne la considère pas comme une vulnérabilité avec une criticité mais met la dans une cartégorie "Information"
 
+### IMPORTANT — validation_status OBLIGATOIRE
+- **TOUTE** vulnérabilité DOIT avoir un `validation_status` explicite. Ne laisse JAMAIS ce champ vide.
+- Si tu n'as pas pu tester contre le Docker (pas d'accès Docker), mets **Non validé**
+- Si tu as testé et l'exploit a fonctionné, mets **Validé**
+- Si tu as testé et l'exploit n'a pas fonctionné, mets **Faux positif**
+- Si tu n'as pas de Docker du tout, mets **Non validé (pas de Docker)**
+
 ## Output
 - Rapport d'audit complet listant toutes les vulnérabilités triées par sévérité
-- Chaque vulnérabilité doit inclure le tag de validation et la preuve associée
+- Chaque vulnérabilité DOIT inclure obligatoirement le tag `validation_status` — ne JAMAIS laisser vide
 - Tableau de synthèse obligatoire en fin de rapport
