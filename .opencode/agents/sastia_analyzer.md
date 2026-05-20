@@ -42,6 +42,10 @@ Auditeur sécurité du code. Réalise une analyse SAST complète, puis teste cha
 - Pour tester, utilise l'URL/port du conteneur fourni par @SastIA_docker
 - Si le projet est une librairie ou CLI, exécute des tests dans le conteneur via `docker exec`
 
+### Langue du rapport
+- Respecte impérativement la langue indiquée par l'orchestrateur (@SastIA_manager)
+- Toutes les descriptions, titres, recommandations doivent être dans la langue demandée
+
 ### Phase 3 — Rapport structuré
 Chaque vulnérabilité DOIT contenir :
 - **ID** (V-01, V-02, ...)

@@ -68,6 +68,7 @@ Le rapport DOIT contenir un tableau de synthèse avec le format suivant pour que
 | Medium   | N |
 | Low      | N |
 
+QUAND TU ACTIVES @SastIA_analyzer et @SastIA_rapport, **transmets-leur explicitement** la langue du rapport : "{report_language_instruction}"
 Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisés (@SastIA_docker, @SastIA_analyzer, @SastIA_rapport)."""
 
     DEFAULT_MODEL = "opencode/deepseek-v4-flash-free"

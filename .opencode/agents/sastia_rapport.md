@@ -68,6 +68,10 @@ Prend le rapport détaillé de @SastIA_analyzer et produit le rapport final form
 ```
 
 ### Contraintes
+- **Langue du rapport** : suis impérativement la langue indiquée par l'orchestrateur (@SastIA_manager)
+  - Si l'orchestrateur dit "écrire en anglais" ou "write in English", tout le rapport DOIT être en anglais
+  - Si l'orchestrateur dit "écrire en français" ou "write in French", tout le rapport DOIT être en français
+  - Les titres, descriptions, recommandations, résumé exécutif — TOUT — doit être dans la langue demandée
 - Le `summary_table` DOIT être une chaîne contenant le tableau markdown exact pour parsing automatique
 - Chaque vulnérabilité DOIT inclure le `validation_status` fourni par @SastIA_analyzer
 - Le champ `code_snippet` NE DOIT PAS contenir les marqueurs ```php ou ``` en début/fin
