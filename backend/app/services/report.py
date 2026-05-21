@@ -1,11 +1,13 @@
 import markdown
 import os
+import re
+import subprocess
+import sys
 
 
 def generate_pdf(markdown_text: str, output_path: str) -> str:
-    from weasyprint import HTML
-
-    html_body = markdown.markdown(markdown_text, extensions=["tables", "fenced_code"])
+    cleaned = re.sub(r'[\f]', '\n', markdown_text)
+    html_body = markdown.markdown(cleaned, extensions=["tables", "fenced_code"])
 
     html_path = output_path.replace(".pdf", ".html")
 
@@ -38,10 +40,25 @@ __BODY__
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(styled_html)
 
-    HTML(filename=html_path).write_pdf(output_path)
+    # Try weasyprint CLI first (more robust), fallback to Python API
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "weasyprint", html_path, output_path],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"weasyprint CLI failed: {result.stderr.strip()}")
+        if result.stderr:
+            print(f"[report] weasyprint stderr: {result.stderr.strip()}")
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        print(f"[report] CLI approach failed ({e}), trying Python API...")
+        from weasyprint import HTML
+        HTML(filename=html_path).write_pdf(output_path)
 
     pdf_size = os.path.getsize(output_path)
     html_size = os.path.getsize(html_path)
+    print(f"[report] PDF={pdf_size}B HTML={html_size}B ratio={pdf_size/html_size:.2%}")
+
     if pdf_size < 1024:
         print(f"[report] WARNING: PDF very small ({pdf_size}B) vs HTML ({html_size}B)")
 
