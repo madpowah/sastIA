@@ -1,7 +1,75 @@
-"""Standalone PDF worker — validates HTML and calls weasyprint in a subprocess.
+"""Standalone PDF worker — multiple fallback strategies for PDF generation.
 """
-import sys
 import os
+import subprocess
+import sys
+import tempfile
+
+
+def try_weasyprint_stdin(html_content: str, pdf_path: str) -> bool:
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "weasyprint", "-", pdf_path],
+            input=html_content,
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0:
+            print(f"[pdf_worker] weasyprint stdin OK -> {pdf_path}")
+            if result.stderr.strip():
+                print(f"[pdf_worker] stderr: {result.stderr.strip()[:200]}")
+            return True
+        print(f"[pdf_worker] weasyprint stdin FAILED (code {result.returncode})")
+        print(f"[pdf_worker] stderr: {result.stderr.strip()[:500]}")
+    except Exception as e:
+        print(f"[pdf_worker] weasyprint stdin exception: {e}")
+    return False
+
+
+def try_weasyprint_file(html_path: str, pdf_path: str) -> bool:
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "weasyprint", html_path, pdf_path],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0:
+            print(f"[pdf_worker] weasyprint file OK -> {pdf_path}")
+            if result.stderr.strip():
+                print(f"[pdf_worker] stderr: {result.stderr.strip()[:200]}")
+            return True
+        print(f"[pdf_worker] weasyprint file FAILED (code {result.returncode})")
+        print(f"[pdf_worker] stderr: {result.stderr.strip()[:500]}")
+    except Exception as e:
+        print(f"[pdf_worker] weasyprint file exception: {e}")
+    return False
+
+
+def try_pandoc(markdown_text: str, pdf_path: str) -> bool:
+    try:
+        subprocess.run(["pandoc", "--version"], capture_output=True, timeout=5)
+    except Exception:
+        return False
+    try:
+        result = subprocess.run(
+            ["pandoc", "-f", "markdown", "-o", pdf_path, "--pdf-engine=weasyprint"],
+            input=markdown_text,
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0:
+            print(f"[pdf_worker] pandoc + weasyprint OK")
+            return True
+        print(f"[pdf_worker] pandoc failed: {result.stderr.strip()[:500]}")
+    except Exception as e:
+        print(f"[pdf_worker] pandoc exception: {e}")
+    return False
+
+
+def try_fallback_text(markdown_text: str, pdf_path: str, html_path: str) -> bool:
+    """Write a minimal HTML and copy as .txt if all else fails."""
+    txt = html_path.replace(".html", ".txt")
+    with open(txt, "w", encoding="utf-8") as f:
+        f.write(markdown_text)
+    print(f"[pdf_worker] fallback: markdown saved to {txt}")
+    return False
 
 
 def main():
@@ -12,53 +80,21 @@ def main():
     html_path = sys.argv[1]
     pdf_path = sys.argv[2]
 
-    html_size = os.path.getsize(html_path)
-    print(f"[pdf_worker] HTML size: {html_size}B")
-
     with open(html_path, "r", encoding="utf-8") as f:
-        raw = f.read()
+        html_content = f.read()
 
-    # Quick sanity: unique chars
-    unique = set(raw)
-    print(f"[pdf_worker] HTML unique chars: {len(unique)}")
+    print(f"[pdf_worker] HTML: {len(html_content)}B")
+    print(f"[pdf_worker] strategies: stdin -> file -> pandoc -> text")
 
-    # Try to parse with lxml (what weasyprint uses internally)
-    try:
-        from lxml import etree
-        parser = etree.HTMLParser(recover=True)
-        tree = etree.parse(html_path, parser)
-        root = tree.getroot()
-        if root is None:
-            print("[pdf_worker] ERROR: lxml produced no root", file=sys.stderr)
-            sys.exit(1)
-        body = root.find(".//body")
-        if body is not None:
-            text_len = len("".join(body.itertext()))
-            print(f"[pdf_worker] lxml body text length: {text_len} chars")
-        errors = [m for m in parser.error_log if m.level >= 2]
-        if errors:
-            print(f"[pdf_worker] lxml errors: {len(errors)}")
-            for e in errors[:5]:
-                print(f"  - line {e.line}: {e.message}")
-    except Exception as e:
-        print(f"[pdf_worker] lxml parse failed: {e}", file=sys.stderr)
+    if try_weasyprint_stdin(html_content, pdf_path):
+        return
+    if try_weasyprint_file(html_path, pdf_path):
+        return
+    if try_pandoc(html_content, pdf_path):
+        return
 
-    # Render with weasyprint
-    try:
-        from weasyprint import HTML
-        print("[pdf_worker] rendering...")
-        doc = HTML(filename=html_path, encoding="utf-8").render()
-        n_pages = len(doc.pages)
-        print(f"[pdf_worker] pages: {n_pages}")
-        doc.write_pdf(pdf_path)
-        pdf_size = os.path.getsize(pdf_path)
-        print(f"[pdf_worker] PDF size: {pdf_size}B")
-        print(f"[pdf_worker] done")
-    except Exception as e:
-        print(f"[pdf_worker] FAILED: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
-        sys.exit(1)
+    try_fallback_text(html_content, pdf_path, html_path)
+    sys.exit(1)
 
 
 if __name__ == "__main__":

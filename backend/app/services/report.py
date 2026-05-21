@@ -17,10 +17,10 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
     cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', markdown_text)
 
     html_path = output_path.replace(".pdf", ".html")
-    html_content = ("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n</head>\n"
-                    "<body style=\"font-family:DejaVu Sans,sans-serif;font-size:11pt;line-height:1.6\">\n"
+    html_content = ("<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"></head>"
+                    "<body>\n"
                     + markdown.markdown(cleaned, extensions=["tables", "fenced_code"])
-                    + "\n</body>\n</html>")
+                    + "\n</body></html>")
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
