@@ -1,12 +1,33 @@
-"""Standalone PDF worker — splits large HTML into chunks, renders each
-with weasyprint, then merges them. Works around bugs where weasyprint
-silently stops rendering after ~2 pages.
+"""Standalone PDF worker — sanitizes HTML then renders via weasyprint.
 """
 import os
 import re
 import subprocess
 import sys
-import tempfile
+
+
+_DANGEROUS_TAGS = (
+    "title", "script", "style", "html", "head", "body",
+    "meta", "link", "base", "form", "input", "select",
+    "textarea", "iframe", "frame", "frameset", "object",
+    "embed", "applet", "svg", "math",
+)
+
+
+def _sanitize_html_body(html: str) -> str:
+    """Escape raw HTML tags that would break document structure in lxml."""
+
+    def _escape_tag(m):
+        full = m.group(0)
+        if full.startswith("</"):
+            return "&lt;/" + m.group(1) + "&gt;"
+        attrs = m.group(2) or ""
+        if attrs and not attrs.endswith("/"):
+            attrs += " "
+        return "&lt;" + m.group(1) + attrs + "&gt;"
+
+    pattern = r'</?(' + '|'.join(_DANGEROUS_TAGS) + r')([^>]*/?)?>'
+    return re.sub(pattern, _escape_tag, html, flags=re.IGNORECASE | re.DOTALL)
 
 
 def _render_html(html: str, pdf_path: str) -> bool:
@@ -18,59 +39,6 @@ def _render_html(html: str, pdf_path: str) -> bool:
     if result.returncode != 0:
         print(f"[pdf_worker] render FAILED: {result.stderr.strip()[:300]}", file=sys.stderr)
         return False
-    return True
-
-
-def _chunk_html(full_html: str) -> list[str]:
-    """Split HTML at <h2> boundaries so each chunk stays small."""
-    match = re.match(r'(.*?</body>\s*</html>\s*$)', full_html, re.DOTALL)
-    header_end = full_html.find("<h2")
-    if header_end == -1:
-        return [full_html]
-
-    prefix = full_html[:header_end]
-    rest = full_html[header_end:]
-
-    sections = re.split(r'(?=<h2)', rest)
-    chunks = []
-    for sec in sections:
-        chunks.append(
-            "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">\n"
-            "<style>\n"
-            "body{font-family:DejaVu Sans,sans-serif;font-size:11pt;line-height:1.6;color:#333;}\n"
-            "table{border-collapse:collapse;width:100%;margin:10px 0;}\n"
-            "th,td{border:1px solid #999;padding:5px 8px;text-align:left;}\n"
-            "th{background:#eee;}\n"
-            "pre{background:#f5f5f5;padding:8px 12px;font-size:9pt;white-space:pre-wrap;}\n"
-            "code{background:#f5f5f5;padding:1px 4px;font-size:9pt;}\n"
-            "</style></head><body>\n"
-            + prefix + sec
-            + "\n</body></html>"
-        )
-    print(f"[pdf_worker] split into {len(chunks)} chunks")
-    return chunks
-
-
-def _merge_pdfs(pdf_paths: list[str], output_path: str) -> bool:
-    """Merge multiple PDFs into one using PyPDF2."""
-    try:
-        from PyPDF2 import PdfMerger
-    except ImportError:
-        try:
-            from pypdf import PdfMerger
-        except ImportError:
-            print("[pdf_worker] PyPDF2/pypdf not available, leaving separate PDFs")
-            return False
-
-    merger = PdfMerger()
-    for p in pdf_paths:
-        if os.path.getsize(p) > 100:
-            merger.append(p)
-        else:
-            print(f"[pdf_worker] skipping tiny chunk: {p} ({os.path.getsize(p)}B)")
-    merger.write(output_path)
-    merger.close()
-    print(f"[pdf_worker] merged {len(pdf_paths)} PDFs -> {output_path}")
     return True
 
 
@@ -87,50 +55,21 @@ def main():
 
     print(f"[pdf_worker] HTML: {len(html_content)}B")
 
-    # Try normal render first
-    output_dir = os.path.dirname(pdf_path) or "."
-    single_pdf = os.path.join(output_dir, ".single.pdf")
-    if _render_html(html_content, single_pdf):
-        if os.path.getsize(single_pdf) > 50000:
-            print("[pdf_worker] single render produced >50KB, likely complete")
-            os.replace(single_pdf, pdf_path)
-            return
+    before = len(re.findall(r'<(title|script|style|html|head|body|meta)[>\s]', html_content, re.IGNORECASE))
+    html_content = _sanitize_html_body(html_content)
+    after = len(re.findall(r'<(title|script|style|html|head|body|meta)[>\s]', html_content, re.IGNORECASE))
+    if before - after > 0:
+        print(f"[pdf_worker] sanitized {before - after} dangerous HTML tags")
 
-        from PyPDF2 import PdfReader
-        n_pages = len(PdfReader(single_pdf).pages)
-        print(f"[pdf_worker] single render: {n_pages} pages, {os.path.getsize(single_pdf)}B")
-        if n_pages > 3:
-            print("[pdf_worker] already has >3 pages, using it")
-            os.replace(single_pdf, pdf_path)
-            return
-        print("[pdf_worker] too few pages, trying chunked approach")
+    if not _render_html(html_content, pdf_path):
+        print("[pdf_worker] rendering failed", file=sys.stderr)
+        sys.exit(1)
 
-    # Chunked render
-    chunks = _chunk_html(html_content)
-    chunk_pdfs = []
-    tmpdir = tempfile.mkdtemp(prefix="pdf_")
+    pdf_size = os.path.getsize(pdf_path)
+    print(f"[pdf_worker] PDF: {pdf_size}B")
 
-    for i, chunk_html in enumerate(chunks):
-        out = os.path.join(tmpdir, f"chunk_{i:03d}.pdf")
-        if _render_html(chunk_html, out) and os.path.getsize(out) > 100:
-            chunk_pdfs.append(out)
-            print(f"[pdf_worker] chunk {i}: {os.path.getsize(out)}B")
-        else:
-            print(f"[pdf_worker] chunk {i}: FAILED, skipping")
-
-    if not chunk_pdfs:
-        print("[pdf_worker] all chunks failed, trying single fallback")
-        os.replace(single_pdf, pdf_path)
-        return
-
-    _merge_pdfs(chunk_pdfs, pdf_path)
-    print(f"[pdf_worker] final PDF: {os.path.getsize(pdf_path)}B")
-
-    for p in chunk_pdfs + [single_pdf]:
-        try:
-            os.remove(p)
-        except OSError:
-            pass
+    if pdf_size < 20000:
+        print(f"[pdf_worker] WARNING: PDF seems small ({pdf_size}B)")
 
 
 if __name__ == "__main__":
