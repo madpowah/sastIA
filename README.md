@@ -46,12 +46,19 @@
 
 ```bash
 ./install.sh   # creates venvs, installs deps, creates admin user
-./start.sh     # starts PostgreSQL (Docker), backend, worker, frontend
+./start.sh     # starts PostgreSQL (Docker), backend, worker, frontend (dev)
+
+# Ou en production :
+docker compose up -d db backend frontend
 ```
 
-Then open **http://localhost:5173** and login with:
+Then open the app in your browser and login with:
 - **Email**: `admin@sastia.com`
 - **Password**: `admin`
+
+> **Ports** : `./start.sh` lance le frontend Vite sur le port **5173** et le backend sur **8000**.
+> Pour la production, utilise `docker compose up` (frontend sur **3000**, backend sur **8000**)
+> ou configure un proxy Nginx (port **80/443**).
 
 You will be prompted to change your password on first login.
 
