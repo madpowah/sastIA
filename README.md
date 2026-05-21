@@ -61,6 +61,17 @@ You will be prompted to change your password on first login.
 - Node.js 20+
 - Docker (optional, for PostgreSQL)
 
+### System Dependencies (PDF Export)
+
+PDF generation uses **WeasyPrint**, which requires system libraries for font rendering:
+
+```bash
+# Debian / Ubuntu
+sudo apt-get install -y libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0
+```
+
+These are installed automatically by `install.sh` when `sudo` is available.
+
 ---
 
 ## Features
