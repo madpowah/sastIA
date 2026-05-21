@@ -2,6 +2,7 @@ import logging
 import markdown
 import os
 import re
+import subprocess
 import sys
 
 logger = logging.getLogger("sastia.report")
@@ -12,24 +13,29 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
 
     html_path = output_path.replace(".pdf", ".html")
     html_content = ("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n</head>\n"
-                    "<body>\n" + markdown.markdown(cleaned, extensions=["tables", "fenced_code"]) + "\n</body>\n</html>")
+                    "<body style=\"font-family:DejaVu Sans,sans-serif;font-size:11pt;line-height:1.6\">\n"
+                    + markdown.markdown(cleaned, extensions=["tables", "fenced_code"])
+                    + "\n</body>\n</html>")
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    logger.info("generating PDF (%sB HTML)", len(html_content))
+    logger.info("generating PDF (%dB HTML)", len(html_content))
 
-    try:
-        from weasyprint import HTML
-        doc = HTML(string=html_content).render()
-        n_pages = len(doc.pages)
-        logger.info("weasyprint rendered %d pages", n_pages)
-        doc.write_pdf(output_path)
-        logger.info("PDF written to %s", output_path)
-        if n_pages < 2:
-            logger.warning("only %d pages for %dB HTML - content may be truncated", n_pages, len(html_content))
-    except Exception as e:
-        logger.error("weasyprint failed: %s", e)
-        raise
+    worker_script = os.path.join(os.path.dirname(__file__), "pdf_worker.py")
+    result = subprocess.run(
+        [sys.executable, worker_script, html_path, output_path],
+        capture_output=True, text=True, timeout=120,
+    )
+    for line in result.stdout.strip().splitlines():
+        logger.info("[worker] %s", line)
+    for line in result.stderr.strip().splitlines():
+        logger.error("[worker] %s", line)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"PDF worker failed (exit {result.returncode})")
+
+    pdf_size = os.path.getsize(output_path)
+    logger.info("PDF generated: %dB", pdf_size)
 
     return output_path
