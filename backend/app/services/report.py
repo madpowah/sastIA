@@ -8,6 +8,11 @@ import sys
 logger = logging.getLogger("sastia.report")
 
 
+def log(msg: str):
+    print(f"[report] {msg}", file=sys.stderr, flush=True)
+    logger.info(msg)
+
+
 def generate_pdf(markdown_text: str, output_path: str) -> str:
     cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', markdown_text)
 
@@ -20,7 +25,7 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    logger.info("generating PDF (%dB HTML)", len(html_content))
+    log(f"HTML size: {len(html_content)}B -> {html_path}")
 
     worker_script = os.path.join(os.path.dirname(__file__), "pdf_worker.py")
     result = subprocess.run(
@@ -28,14 +33,13 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
         capture_output=True, text=True, timeout=120,
     )
     for line in result.stdout.strip().splitlines():
-        logger.info("[worker] %s", line)
+        log(f"[worker] {line}")
     for line in result.stderr.strip().splitlines():
-        logger.error("[worker] %s", line)
+        log(f"[worker:err] {line}")
 
     if result.returncode != 0:
         raise RuntimeError(f"PDF worker failed (exit {result.returncode})")
 
     pdf_size = os.path.getsize(output_path)
-    logger.info("PDF generated: %dB", pdf_size)
-
+    log(f"PDF generated: {pdf_size}B")
     return output_path
