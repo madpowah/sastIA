@@ -56,9 +56,8 @@ Then open the app in your browser and login with:
 - **Email**: `admin@sastia.com`
 - **Password**: `admin`
 
-> **Ports** : `./start.sh` lance le frontend Vite sur le port **5173** et le backend sur **8000**.
-> Pour la production, utilise `docker compose up` (frontend sur **3000**, backend sur **8000**)
-> ou configure un proxy Nginx (port **80/443**).
+> **Ports** : Par défaut, le frontend est sur le port **3000** et le backend sur **8000** (`docker compose up`).
+> En mode dev (`./start.sh`), le frontend Vite est sur le port **5173**.
 
 You will be prompted to change your password on first login.
 
