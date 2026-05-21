@@ -35,6 +35,20 @@ if command -v sudo >/dev/null 2>&1 && apt-get --version >/dev/null 2>&1; then
     fi
 fi
 
+# WeasyPrint system libraries (PDF generation)
+if command -v sudo >/dev/null 2>&1 && apt-get --version >/dev/null 2>&1; then
+    MISSING_WP=""
+    dpkg -l libpango-1.0-0 >/dev/null 2>&1 || MISSING_WP="$MISSING_WP libpango-1.0-0"
+    dpkg -l libpangocairo-1.0-0 >/dev/null 2>&1 || MISSING_WP="$MISSING_WP libpangocairo-1.0-0"
+    dpkg -l libgdk-pixbuf-2.0-0 >/dev/null 2>&1 || MISSING_WP="$MISSING_WP libgdk-pixbuf-2.0-0"
+    if [ -n "$MISSING_WP" ]; then
+        echo "  -> Installing$MISSING_WP (for PDF generation)..."
+        sudo apt-get install -y -qq $MISSING_WP 2>/dev/null || echo "  -> (skipped, PDF disabled)"
+    else
+        echo "  -> WeasyPrint libraries already installed"
+    fi
+fi
+
 # ── 1. Backend venv ────────────────────────────────────
 echo "[1/6] Backend — virtualenv + dependencies"
 if [ ! -d venv ]; then
