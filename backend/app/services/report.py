@@ -12,7 +12,7 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
 
     html_path = output_path.replace(".pdf", ".html")
 
-    styled_html = """<!DOCTYPE html>
+    HTML_TEMPLATE = """<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -81,16 +81,15 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
 </style>
 </head>
 <body>
-%s
+__BODY__
 </body>
-</html>""" % html_body
+</html>"""
+
+    styled_html = HTML_TEMPLATE.replace("__BODY__", html_body)
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(styled_html)
 
-    try:
-        HTML(string=styled_html).write_pdf(output_path)
-    except Exception:
-        raise
+    HTML(string=styled_html).write_pdf(output_path)
 
     return output_path
