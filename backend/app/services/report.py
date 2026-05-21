@@ -6,7 +6,13 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
     try:
         from weasyprint import HTML
         html_content = markdown.markdown(markdown_text, extensions=["tables", "fenced_code"])
-        styled_html = f"""<!DOCTYPE html>
+    except Exception:
+        fallback = output_path.replace(".pdf", ".html")
+        with open(fallback, "w") as f:
+            f.write(f"<pre>{markdown_text}</pre>")
+        raise
+
+    styled_html = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -54,12 +60,11 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
 {html_content}
 </body>
 </html>"""
+    try:
         HTML(string=styled_html).write_pdf(output_path)
-    except ImportError:
-        from weasyprint import HTML  # noqa: F811
-        raise
     except Exception:
-        with open(output_path.replace(".pdf", ".html"), "w") as f:
+        fallback = output_path.replace(".pdf", ".html")
+        with open(fallback, "w") as f:
             f.write(styled_html)
         raise
 
