@@ -3,10 +3,7 @@ import os
 
 
 def generate_pdf(markdown_text: str, output_path: str) -> str:
-    try:
-        from weasyprint import HTML
-    except ImportError:
-        raise
+    from weasyprint import HTML
 
     html_body = markdown.markdown(markdown_text, extensions=["tables", "fenced_code"])
 
@@ -22,7 +19,7 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
         margin: 1.5cm 2cm;
     }
     body {
-        font-family: 'DejaVu Sans', Arial, sans-serif;
+        font-family: 'DejaVu Sans', 'DejaVu Sans Mono', 'Liberation Sans', Arial, sans-serif;
         font-size: 11pt;
         line-height: 1.6;
         color: #1f2937;
@@ -90,6 +87,11 @@ __BODY__
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(styled_html)
 
-    HTML(string=styled_html).write_pdf(output_path)
+    HTML(filename=html_path).write_pdf(output_path)
+
+    pdf_size = os.path.getsize(output_path)
+    html_size = os.path.getsize(html_path)
+    if pdf_size < 1024:
+        print(f"[report] WARNING: PDF very small ({pdf_size}B) vs HTML ({html_size}B)")
 
     return output_path
