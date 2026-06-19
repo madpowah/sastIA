@@ -147,7 +147,7 @@ def delete_provider(
     db: Session = Depends(get_db),
 ):
     provider = db.query(Provider).filter(
-        Provider.id == provider_id,
+        Provider.id == str(provider_id),
         Provider.user_id == current_user.id,
     ).first()
     if not provider:
@@ -163,7 +163,7 @@ def fetch_provider_models(
     db: Session = Depends(get_db),
 ):
     provider = db.query(Provider).filter(
-        Provider.id == provider_id,
+        Provider.id == str(provider_id),
         Provider.user_id == current_user.id,
     ).first()
     if not provider:

@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
@@ -40,11 +39,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         user_id_str: str = payload.get("sub")
         if user_id_str is None:
             raise credentials_exception
-        user_id = uuid.UUID(user_id_str)
-    except (JWTError, ValueError):
+    except JWTError:
         raise credentials_exception
-
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id_str).first()
     if user is None or not user.is_active:
         raise credentials_exception
     return user

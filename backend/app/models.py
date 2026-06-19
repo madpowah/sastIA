@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey, Uuid
+from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
@@ -24,7 +24,7 @@ class DockerStatus(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
@@ -41,8 +41,9 @@ class User(Base):
 class Audit(Base):
     __tablename__ = "audits"
 
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    user_id = Column(Uuid, ForeignKey("users.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    callback_secret = Column(String(36), nullable=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     repo_url = Column(String(1024), nullable=True)
@@ -76,8 +77,8 @@ class Audit(Base):
 class Provider(Base):
     __tablename__ = "providers"
 
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    user_id = Column(Uuid, ForeignKey("users.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     base_url = Column(String(1024), nullable=False)
     api_key = Column(Text, nullable=True)
@@ -90,7 +91,7 @@ class Provider(Base):
 class AvailableModel(Base):
     __tablename__ = "available_models"
 
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     model_id = Column(String(255), nullable=False, unique=True)
     name = Column(String(255), nullable=False)
     provider = Column(String(255), nullable=False)

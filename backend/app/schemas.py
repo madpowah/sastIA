@@ -5,13 +5,6 @@ from uuid import UUID
 from app.models import AuditStatus, DockerStatus
 
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str
-    company: Optional[str] = None
-
-
 class UserLogin(BaseModel):
     email: EmailStr
     password: str

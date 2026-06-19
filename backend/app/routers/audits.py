@@ -105,7 +105,7 @@ def create_audit(
 
 @router.get("/{audit_id}", response_model=AuditResponse)
 def get_audit(audit_id: uuid.UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    audit = db.query(Audit).filter(Audit.id == audit_id, Audit.user_id == current_user.id).first()
+    audit = db.query(Audit).filter(Audit.id == str(audit_id), Audit.user_id == current_user.id).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
     return AuditResponse.model_validate(audit)
@@ -113,7 +113,7 @@ def get_audit(audit_id: uuid.UUID, current_user: User = Depends(get_current_user
 
 @router.post("/{audit_id}/start", response_model=AuditResponse)
 def start_analysis(audit_id: uuid.UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    audit = db.query(Audit).filter(Audit.id == audit_id, Audit.user_id == current_user.id).first()
+    audit = db.query(Audit).filter(Audit.id == str(audit_id), Audit.user_id == current_user.id).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
     if audit.status != AuditStatus.PENDING:
@@ -124,14 +124,16 @@ def start_analysis(audit_id: uuid.UUID, current_user: User = Depends(get_current
     db.refresh(audit)
 
     # Send to worker asynchronously
-    _dispatch_to_worker(audit, current_user)
+    _dispatch_to_worker(audit, current_user, db)
 
     return AuditResponse.model_validate(audit)
 
 
-def _dispatch_to_worker(audit: Audit, user: User):
+def _dispatch_to_worker(audit: Audit, user: User, db: Session):
+    audit.callback_secret = str(uuid.uuid4())
+    db.commit()
     worker_url = f"{settings.WORKER_URL}/analyze"
-    callback_url = f"{settings.CODE_DOWNLOAD_BASE_URL}/api/audits/{audit.id}/callback"
+    callback_url = f"{settings.CODE_DOWNLOAD_BASE_URL}/api/audits/{audit.id}/callback?secret={audit.callback_secret}"
     download_base = f"{settings.CODE_DOWNLOAD_BASE_URL}/api/audits/{audit.id}/download"
 
     payload = {
@@ -155,8 +157,8 @@ def _dispatch_to_worker(audit: Audit, user: User):
 
 
 @router.get("/{audit_id}/download", include_in_schema=False)
-def download_code(audit_id: uuid.UUID, db: Session = Depends(get_db)):
-    audit = db.query(Audit).filter(Audit.id == audit_id).first()
+def download_code(audit_id: uuid.UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    audit = db.query(Audit).filter(Audit.id == str(audit_id), Audit.user_id == current_user.id).first()
     if not audit or not audit.code_file_path:
         raise HTTPException(status_code=404, detail="No code file available")
 
@@ -269,10 +271,12 @@ def _build_markdown_from_vulns(vulns: list[dict], summary: str = "", metrics: Op
 
 
 @router.post("/{audit_id}/callback", include_in_schema=False)
-def analysis_callback(audit_id: uuid.UUID, body: dict, db: Session = Depends(get_db)):
-    audit = db.query(Audit).filter(Audit.id == audit_id).first()
+def analysis_callback(audit_id: uuid.UUID, secret: str, body: dict, db: Session = Depends(get_db)):
+    audit = db.query(Audit).filter(Audit.id == str(audit_id)).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
+    if not audit.callback_secret or secret != audit.callback_secret:
+        raise HTTPException(status_code=403, detail="Invalid callback secret")
 
     error = body.get("error")
     if error:
@@ -328,7 +332,7 @@ def analysis_callback(audit_id: uuid.UUID, body: dict, db: Session = Depends(get
 
 @router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_audit(audit_id: uuid.UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    audit = db.query(Audit).filter(Audit.id == audit_id, Audit.user_id == current_user.id).first()
+    audit = db.query(Audit).filter(Audit.id == str(audit_id), Audit.user_id == current_user.id).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
 

@@ -1,12 +1,48 @@
 import os
+import ipaddress
 import shutil
 import zipfile
 import tarfile
 import tempfile
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
+
+
+PRIVATE_BLOCKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("100.64.0.0/10"),
+]
+METADATA_IPS = {"169.254.169.254", "100.100.100.200", "metadata.google.internal"}
+FORBIDDEN_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"}
+
+
+def _is_safe_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        host = parsed.hostname
+        if not host:
+            return False
+        if host.lower() in FORBIDDEN_HOSTS or host.lower() in METADATA_IPS:
+            return False
+        try:
+            ip = ipaddress.ip_address(host)
+            for block in PRIVATE_BLOCKS:
+                if ip in block:
+                    return False
+        except ValueError:
+            pass
+        return True
+    except Exception:
+        return False
 
 
 async def fetch_code(job, target_dir: Path) -> Path:
@@ -54,7 +90,8 @@ async def _download_or_copy_code(job, target_dir: Path) -> Path:
     code_file = target_dir / f"code{ext}"
 
     if job.code_path.startswith("http"):
-        # Download from backend
+        if not _is_safe_url(job.code_path):
+            raise ValueError(f"Blocked potentially unsafe URL: {job.code_path}")
         async with httpx.AsyncClient() as client:
             resp = await client.get(job.code_path)
             resp.raise_for_status()
@@ -65,6 +102,8 @@ async def _download_or_copy_code(job, target_dir: Path) -> Path:
         # code_path is a path on the backend filesystem — try via backend API
         base = job.backend_base_url or "http://backend:8000"
         download_url = f"{base}/api/audits/{job.audit_id}/download"
+        if not _is_safe_url(download_url):
+            raise ValueError(f"Blocked potentially unsafe download URL: {download_url}")
         async with httpx.AsyncClient() as client:
             resp = await client.get(download_url)
             resp.raise_for_status()

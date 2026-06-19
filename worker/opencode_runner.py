@@ -82,7 +82,6 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
         *opencode_cmd, "run",
         "--model", model,
         "--dir", code_dir,
-        "--dangerously-skip-permissions",
         prompt,
     ]
 

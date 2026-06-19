@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
 @router.get("/{audit_id}", response_model=ReportResponse)
 def get_report(audit_id: uuid.UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    audit = db.query(Audit).filter(Audit.id == audit_id, Audit.user_id == current_user.id).first()
+    audit = db.query(Audit).filter(Audit.id == str(audit_id), Audit.user_id == current_user.id).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
     if not audit.report_markdown:
@@ -31,7 +31,7 @@ def get_report(audit_id: uuid.UUID, current_user: User = Depends(get_current_use
 
 @router.get("/{audit_id}/pdf")
 def download_pdf(audit_id: uuid.UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    audit = db.query(Audit).filter(Audit.id == audit_id, Audit.user_id == current_user.id).first()
+    audit = db.query(Audit).filter(Audit.id == str(audit_id), Audit.user_id == current_user.id).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
     if not audit.report_markdown:

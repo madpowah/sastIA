@@ -5,7 +5,7 @@ import os
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./sastia.db"
-    SECRET_KEY: str = "change-this-to-a-long-random-string-in-production"
+    SECRET_KEY: str  # Must be set via environment variable - no default for security
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     UPLOAD_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")

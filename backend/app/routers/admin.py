@@ -141,13 +141,13 @@ def get_user_detail(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == str(user_id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     audits = (
         db.query(Audit)
-        .filter(Audit.user_id == user_id)
+        .filter(Audit.user_id == str(user_id))
         .order_by(Audit.created_at.desc())
         .all()
     )
@@ -168,7 +168,7 @@ def update_user(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == str(user_id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -213,7 +213,7 @@ def delete_user(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == str(user_id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if user.id == admin_user.id:
@@ -237,11 +237,7 @@ def list_audits(
     if status_filter:
         query = query.filter(Audit.status == status_filter)
     if user_id:
-        try:
-            uid = uuid.UUID(user_id)
-            query = query.filter(Audit.user_id == uid)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid user_id UUID")
+        query = query.filter(Audit.user_id == user_id)
     total = query.count()
     audits = query.order_by(Audit.created_at.desc()).offset((page - 1) * size).limit(size).all()
     return PaginatedResponse(
@@ -258,7 +254,7 @@ def get_audit_detail(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    audit = db.query(Audit).filter(Audit.id == audit_id).first()
+    audit = db.query(Audit).filter(Audit.id == str(audit_id)).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
     return {
@@ -291,7 +287,7 @@ def retry_audit(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    audit = db.query(Audit).filter(Audit.id == audit_id).first()
+    audit = db.query(Audit).filter(Audit.id == str(audit_id)).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
     if audit.status not in (AuditStatus.FAILED, AuditStatus.PENDING):
@@ -313,7 +309,7 @@ def retry_audit(
 
     from app.routers.audits import _dispatch_to_worker
 
-    _dispatch_to_worker(audit, audit.user)
+    _dispatch_to_worker(audit, audit.user, db)
     return {"status": "dispatched", "audit_id": str(audit.id)}
 
 
@@ -324,7 +320,7 @@ def reset_user_password(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == str(user_id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if len(data.new_password) < 8:
@@ -349,7 +345,7 @@ def refresh_available_models(
         )
         lines = result.stdout.strip().split("\n")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to run opencode models: {e}")
+        raise HTTPException(status_code=502, detail="Failed to refresh models. Check server logs for details.")
 
     raw_models = [l.strip() for l in lines if l.strip() and "/" in l]
 

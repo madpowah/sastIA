@@ -10,7 +10,7 @@ services:
       - uploads:/app/uploads
     environment:
       - DATABASE_URL=postgresql://sastia:sastia@db:5432/sastia
-      - SECRET_KEY=change-this-to-a-long-random-string
+      - SECRET_KEY=${SECRET_KEY}
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=1440
       - UPLOAD_DIR=/app/uploads
