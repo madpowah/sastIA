@@ -93,7 +93,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES=1440
 UPLOAD_DIR=./uploads
 WORKER_URL=http://localhost:9000
 CODE_DOWNLOAD_BASE_URL=http://localhost:8000
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8000
+# Ajoute ici l'URL de ton serveur (ex: http://mon-domaine.com,https://mon-domaine.com)
+# CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8000,http://mon-domaine.com
 
 # ── PostgreSQL (optionnel) ────────────────────────────
 # Décommente et adapte si tu utilises PostgreSQL au lieu de SQLite
