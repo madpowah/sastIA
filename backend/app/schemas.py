@@ -31,6 +31,7 @@ class TokenResponse(BaseModel):
 
 
 class AuditResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     id: UUID
     user_id: UUID
     name: str
@@ -83,6 +84,7 @@ class ReportResponse(BaseModel):
 
 
 class AuditCreate(BaseModel):
+    model_config = {"protected_namespaces": ()}
     name: str
     description: Optional[str] = None
     repo_url: Optional[str] = None
@@ -206,6 +208,7 @@ class AdminUserCreate(BaseModel):
 
 
 class AvailableModelResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     id: UUID
     model_id: str
     name: str
@@ -218,5 +221,6 @@ class AvailableModelResponse(BaseModel):
 
 
 class AvailableModelToggle(BaseModel):
+    model_config = {"protected_namespaces": ()}
     model_id: str
     enabled: bool
