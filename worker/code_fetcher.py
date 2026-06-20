@@ -21,7 +21,7 @@ PRIVATE_BLOCKS = [
     ipaddress.ip_network("100.64.0.0/10"),
 ]
 METADATA_IPS = {"169.254.169.254", "100.100.100.200", "metadata.google.internal"}
-FORBIDDEN_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1"]}
+FORBIDDEN_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"}
 
 # Strict pattern for git repo URLs: protocol://host/path
 REPO_URL_PATTERN = re.compile(
