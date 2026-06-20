@@ -73,7 +73,17 @@ cd "$ROOT_DIR"
 
 # ── 4. .env ────────────────────────────────────────────
 echo "[4/6] Backend .env"
-if [ ! -f backend/.env ]; then
+NEEDS_ENV=true
+if [ -f backend/.env ] && [ -s backend/.env ]; then
+    if grep -q '^SECRET_KEY=' backend/.env 2>/dev/null; then
+        NEEDS_ENV=false
+    else
+        echo "  -> backend/.env exists but missing SECRET_KEY, regenerating..."
+    fi
+else
+    echo "  -> backend/.env is empty or missing, creating..."
+fi
+if [ "$NEEDS_ENV" = "true" ]; then
     RANDOM_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))" 2>/dev/null || openssl rand -hex 32 2>/dev/null || echo "change-this-to-a-long-random-string-in-production")
     cat > backend/.env << ENVEOF
 DATABASE_URL=sqlite:///./sastia.db
@@ -96,7 +106,7 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 ENVEOF
     echo "  -> backend/.env created (SQLite, dev defaults)"
 else
-    echo "  -> backend/.env already exists, skipped"
+    echo "  -> backend/.env already exists and has SECRET_KEY, skipped"
 fi
 
 mkdir -p backend/uploads
