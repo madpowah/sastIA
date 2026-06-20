@@ -31,33 +31,8 @@ class TokenResponse(BaseModel):
 
 
 class AuditResponse(BaseModel):
-    model_config = {"protected_namespaces": ()}
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
     id: UUID
-    user_id: UUID
-    name: str
-    description: Optional[str] = None
-    repo_url: Optional[str] = None
-    code_file_path: Optional[str] = None
-    status: AuditStatus
-    docker_status: DockerStatus
-    vulnerabilities_critical: int
-    vulnerabilities_high: int
-    vulnerabilities_medium: int
-    vulnerabilities_low: int
-    vulnerabilities_info: int
-    total_vulnerabilities: int
-    report_markdown: Optional[str] = None
-    error_message: Optional[str] = None
-    analysis_type: str
-    docker_analysis_enabled: int
-    model_id: Optional[str] = None
-    report_language: str = "en"
-    created_at: datetime
-    updated_at: datetime
-    completed_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class AuditListResponse(BaseModel):
@@ -208,16 +183,13 @@ class AdminUserCreate(BaseModel):
 
 
 class AvailableModelResponse(BaseModel):
-    model_config = {"protected_namespaces": ()}
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
     id: UUID
     model_id: str
     name: str
     provider: str
     enabled: int
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class AvailableModelToggle(BaseModel):
