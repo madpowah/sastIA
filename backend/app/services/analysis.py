@@ -29,13 +29,13 @@ async def send_to_analysis_worker(audit: Audit, db: Session):
 
 
 def generate_mock_report(audit: Audit) -> str:
-    import random
+    import secrets
     from datetime import datetime
 
-    crit = random.randint(0, 5)
-    high = random.randint(1, 8)
-    med = random.randint(3, 12)
-    low = random.randint(5, 15)
+    crit = secrets.randbelow(6)
+    high = secrets.randbelow(8) + 1
+    med = secrets.randbelow(10) + 3
+    low = secrets.randbelow(11) + 5
 
     audit.vulnerabilities_critical = crit
     audit.vulnerabilities_high = high

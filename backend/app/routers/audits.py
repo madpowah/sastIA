@@ -4,7 +4,7 @@ import uuid
 import shutil
 import httpx
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -14,6 +14,8 @@ from app.models import User, Audit, AuditStatus, DockerStatus
 from app.schemas import AuditCreate, AuditResponse, AuditListResponse, DashboardStats
 from app.auth import get_current_user
 from app.config import get_settings
+
+ALLOWED_EXTENSIONS = {".zip", ".tar", ".gz", ".tgz", ".bz2", ".py", ".js", ".ts", ".java", ".cpp", ".c", ".h", ".go", ".rs", ".rb", ".php", ".swift", ".kt", ".scala", ".html", ".css", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".sh", ".bash", ".dockerfile", ".txt", ".md", ".xml", ".sql", ".gradle", ".mvn", ".csproj", ".sln"}
 
 
 def parse_vulnerabilities_from_markdown(markdown: str) -> dict:
@@ -90,9 +92,14 @@ def create_audit(
     db.refresh(audit)
 
     if code_file:
+        file_ext = os.path.splitext(code_file.filename or "code.zip")[1].lower()
+        if file_ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File type '{file_ext}' is not allowed. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+            )
         upload_dir = os.path.join(settings.UPLOAD_DIR, str(current_user.id), str(audit.id))
         os.makedirs(upload_dir, exist_ok=True)
-        file_ext = os.path.splitext(code_file.filename or "code.zip")[1]
         file_path = os.path.join(upload_dir, f"code{file_ext}")
         with open(file_path, "wb") as f:
             shutil.copyfileobj(code_file.file, f)
@@ -133,13 +140,14 @@ def _dispatch_to_worker(audit: Audit, user: User, db: Session):
     audit.callback_secret = str(uuid.uuid4())
     db.commit()
     worker_url = f"{settings.WORKER_URL}/analyze"
-    callback_url = f"{settings.CODE_DOWNLOAD_BASE_URL}/api/audits/{audit.id}/callback?secret={audit.callback_secret}"
+    callback_url = f"{settings.CODE_DOWNLOAD_BASE_URL}/api/audits/{audit.id}/callback"
     download_base = f"{settings.CODE_DOWNLOAD_BASE_URL}/api/audits/{audit.id}/download"
 
     payload = {
         "audit_id": str(audit.id),
         "user_id": str(user.id),
         "callback_url": callback_url,
+        "callback_secret": audit.callback_secret,
         "repo_url": audit.repo_url,
         "code_path": download_base if audit.code_file_path else None,
         "analysis_type": audit.analysis_type,
@@ -271,10 +279,11 @@ def _build_markdown_from_vulns(vulns: list[dict], summary: str = "", metrics: Op
 
 
 @router.post("/{audit_id}/callback", include_in_schema=False)
-def analysis_callback(audit_id: uuid.UUID, secret: str, body: dict, db: Session = Depends(get_db)):
+def analysis_callback(audit_id: uuid.UUID, request: Request, body: dict, db: Session = Depends(get_db)):
     audit = db.query(Audit).filter(Audit.id == str(audit_id)).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
+    secret = request.headers.get("X-Callback-Secret") or body.get("callback_secret")
     if not audit.callback_secret or secret != audit.callback_secret:
         raise HTTPException(status_code=403, detail="Invalid callback secret")
 

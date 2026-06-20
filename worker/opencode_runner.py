@@ -21,6 +21,7 @@ async def run_manager_agent(
     model_id: str | None = None,
     report_language: str = "en",
     docker_analysis: bool = False,
+    callback_secret: str | None = None,
     timeout: int = 7200,
 ) -> str:
     audit_dir = os.path.dirname(code_dir)
@@ -35,19 +36,23 @@ async def run_manager_agent(
         "en": "The final report MUST be written in English.",
     }.get(report_language, "The final report MUST be written in English.")
 
+    secret_body = ""
+    if callback_secret:
+        secret_body = f', "callback_secret": "{callback_secret}"'
+
     docker_steps = ""
     if docker_analysis:
         docker_steps = f"""1. Active @SastIA_docker en lui indiquant le chemin {code_dir} pour qu'il mette en place l'environnement de test
 2. Active @SastIA_analyzer en lui fournissant le même chemin {code_dir} et les infos Docker pour l'audit de sécurité
 3. Active @SastIA_rapport pour produire le rapport final
-4. Envoie le rapport final à l'URL de callback : {callback_url}
+4. Envoie le rapport final à l'URL de callback : {callback_url} en POSTant le JSON du rapport avec{secret_body} le header Content-Type: application/json
 5. Supprime les environnements de test une fois l'audit terminé"""
         docker_cleanup = "\n5. Supprime les environnements de test une fois l'audit terminé"
     else:
         docker_steps = f"""1. Passe l'étape @SastIA_docker (non requis pour cette analyse)
 2. Active @SastIA_analyzer en lui fournissant le chemin {code_dir} pour l'audit de sécurité (sans validation Docker)
 3. Active @SastIA_rapport pour produire le rapport final
-4. Envoie le rapport final à l'URL de callback : {callback_url}"""
+4. Envoie le rapport final à l'URL de callback : {callback_url} en POSTant le JSON du rapport avec{secret_body} le header Content-Type: application/json"""
 
     prompt = f"""Tu es SastIA_manager, l'orchestrateur d'audit de sécurité.
 

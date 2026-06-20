@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import json
 import uuid
@@ -339,12 +340,13 @@ def refresh_available_models(
     db: Session = Depends(get_db),
 ):
     try:
+        opencode_path = shutil.which("opencode") or "/usr/local/bin/opencode"
         result = subprocess.run(
-            ["opencode", "models"],
+            [opencode_path, "models"],
             capture_output=True, text=True, timeout=30,
         )
         lines = result.stdout.strip().split("\n")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=502, detail="Failed to refresh models. Check server logs for details.")
 
     raw_models = [l.strip() for l in lines if l.strip() and "/" in l]

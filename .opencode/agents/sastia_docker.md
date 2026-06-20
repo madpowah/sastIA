@@ -32,6 +32,10 @@ Crée un environnement Docker complet et isolé pour exécuter le code à audite
 
 ## Contraintes
 - **Ne JAMAIS monter de volumes** vers le host
+- **Ne JAMAIS** inclure de SECRET_KEY, mot de passe ou token en dur dans le Dockerfile ou les fichiers .env
+- **Génère toujours** une SECRET_KEY aléatoire au démarrage du conteneur (ex: via `openssl rand -hex 32`)
+- Pour les variables d'environnement sensibles, écris-les dans un fichier `.env` exclu du build et passé via `--env-file`
+- **Utilise un utilisateur non-root** dans le Dockerfile (créer un user avec `adduser` et utiliser `USER`)
 - Applique les mesures de sécurité essentielles (pas de --privileged, réseau isolé si possible)
 - Utilise `--network host` ou expose les ports explicitement pour que @SastIA_analyzer puisse tester
 - Le conteneur ne doit être accessible qu'en localhost

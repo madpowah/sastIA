@@ -8,13 +8,18 @@ RUN apt-get update && apt-get install -y \
     libgdk-pixbuf-2.0-0 \
     libffi-dev \
     shared-mime-info \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && addgroup --system --gid 1001 sastia \
+    && adduser --system --uid 1001 --ingroup sastia --no-create-home sastia
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+RUN chown -R sastia:sastia /app && chmod -R 755 /app
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+USER sastia
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

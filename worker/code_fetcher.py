@@ -1,4 +1,5 @@
 import os
+import re
 import ipaddress
 import shutil
 import zipfile
@@ -20,7 +21,19 @@ PRIVATE_BLOCKS = [
     ipaddress.ip_network("100.64.0.0/10"),
 ]
 METADATA_IPS = {"169.254.169.254", "100.100.100.200", "metadata.google.internal"}
-FORBIDDEN_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"}
+FORBIDDEN_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1"]}
+
+# Strict pattern for git repo URLs: protocol://host/path
+REPO_URL_PATTERN = re.compile(
+    r"^(https?://[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}(:\d+)?/[-a-zA-Z0-9_.~%/]+)"
+    r"|(git@[a-zA-Z0-9][-a-zA-Z0-9.]*:[-a-zA-Z0-9_.~%/]+)"
+    r"|(ssh://[a-zA-Z0-9][-a-zA-Z0-9.]*/[-a-zA-Z0-9_.~%/]+)"
+    r")\.git/?$"
+)
+
+
+def _is_safe_repo_url(url: str) -> bool:
+    return bool(REPO_URL_PATTERN.match(url))
 
 
 def _is_safe_url(url: str) -> bool:
@@ -59,6 +72,9 @@ async def fetch_code(job, target_dir: Path) -> Path:
 
 
 async def _clone_git(repo_url: str, target_dir: Path) -> Path:
+    if not _is_safe_repo_url(repo_url):
+        raise ValueError(f"Invalid or potentially unsafe repo URL: {repo_url}")
+
     repo_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")
     clone_dir = target_dir / repo_name
 
@@ -72,11 +88,11 @@ async def _clone_git(repo_url: str, target_dir: Path) -> Path:
         git.Repo.clone_from(repo_url, clone_dir, depth=1)
         return clone_dir
     except ImportError:
-        # fallback: use subprocess git
         import subprocess
 
+        git_path = shutil.which("git") or "/usr/bin/git"
         subprocess.run(
-            ["git", "clone", "--depth", "1", repo_url, str(clone_dir)],
+            [git_path, "clone", "--depth", "1", repo_url, str(clone_dir)],
             check=True,
             capture_output=True,
         )
@@ -112,6 +128,25 @@ async def _download_or_copy_code(job, target_dir: Path) -> Path:
     return _extract_if_archive(code_file, target_dir)
 
 
+def _is_safe_member(member_path: str, extract_dir: Path) -> bool:
+    resolved = (extract_dir / member_path).resolve()
+    return resolved.is_relative_to(extract_dir.resolve())
+
+
+def _safe_extract_zip(zf: zipfile.ZipFile, extract_dir: Path):
+    for member in zf.namelist():
+        if not _is_safe_member(member, extract_dir):
+            raise ValueError(f"Zip member with path traversal detected: {member}")
+    zf.extractall(extract_dir)
+
+
+def _safe_extract_tar(tf: tarfile.TarFile, extract_dir: Path):
+    for member in tf.getmembers():
+        if not _is_safe_member(member.name, extract_dir):
+            raise ValueError(f"Tar member with path traversal detected: {member.name}")
+    tf.extractall(extract_dir)
+
+
 def _extract_if_archive(file_path: Path, target_dir: Path) -> Path:
     ext = file_path.suffix.lower()
     extract_dir = target_dir / "extracted"
@@ -119,13 +154,13 @@ def _extract_if_archive(file_path: Path, target_dir: Path) -> Path:
 
     if ext == ".zip":
         with zipfile.ZipFile(file_path, "r") as zf:
-            zf.extractall(extract_dir)
+            _safe_extract_zip(zf, extract_dir)
         return extract_dir
 
     if ext in (".tar", ".gz", ".tgz", ".bz2"):
         mode = "r:gz" if ext in (".gz", ".tgz") else "r:bz2" if ext == ".bz2" else "r"
         with tarfile.open(file_path, mode) as tf:
-            tf.extractall(extract_dir)
+            _safe_extract_tar(tf, extract_dir)
         return extract_dir
 
     # Not an archive — single file, wrap in a dir

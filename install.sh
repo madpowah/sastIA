@@ -74,9 +74,10 @@ cd "$ROOT_DIR"
 # ── 4. .env ────────────────────────────────────────────
 echo "[4/6] Backend .env"
 if [ ! -f backend/.env ]; then
-    cat > backend/.env << 'ENVEOF'
+    RANDOM_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))" 2>/dev/null || openssl rand -hex 32 2>/dev/null || echo "change-this-to-a-long-random-string-in-production")
+    cat > backend/.env << ENVEOF
 DATABASE_URL=sqlite:///./sastia.db
-SECRET_KEY=change-this-to-a-long-random-string-in-production
+SECRET_KEY=${RANDOM_SECRET}
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 UPLOAD_DIR=./uploads

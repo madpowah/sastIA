@@ -9,6 +9,10 @@ FRONTEND_PID=""
 WORKER_PID=""
 POSTGRES_CONTAINER=""
 
+POSTGRES_USER="${POSTGRES_USER:-sastia}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$(python3 -c "import secrets; print(secrets.token_urlsafe(24))" 2>/dev/null || openssl rand -hex 16)}"
+POSTGRES_DB="${POSTGRES_DB:-sastia}"
+
 cleanup() {
     echo ""
     echo "=== Stopping all services ==="
@@ -34,9 +38,9 @@ if command -v docker >/dev/null 2>&1; then
         echo "[..] Starting PostgreSQL via Docker..."
         POSTGRES_CONTAINER=$(docker run -d \
             --name sastia-db \
-            -e POSTGRES_USER=sastia \
-            -e POSTGRES_PASSWORD=sastia \
-            -e POSTGRES_DB=sastia \
+            -e POSTGRES_USER="${POSTGRES_USER}" \
+            -e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+            -e POSTGRES_DB="${POSTGRES_DB}" \
             -p 5432:5432 \
             postgres:16-alpine 2>/dev/null || true)
         if [ -n "$POSTGRES_CONTAINER" ]; then
@@ -44,7 +48,7 @@ if command -v docker >/dev/null 2>&1; then
             echo "  Waiting for PostgreSQL to be ready..."
             i=0
             while [ $i -lt 15 ]; do
-                if docker exec sastia-db pg_isready -U sastia >/dev/null 2>&1; then
+                if docker exec sastia-db pg_isready -U "${POSTGRES_USER}" >/dev/null 2>&1; then
                     echo "  -> Ready after $((i+1))s"
                     break
                 fi
@@ -63,6 +67,7 @@ fi
 echo ""
 echo "[..] Starting Backend (FastAPI) on :8000"
 cd backend
+DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}" \
 ../venv/bin/uvicorn app.main:app --reload --port 8000 --host 0.0.0.0 &
 BACKEND_PID=$!
 cd "$ROOT_DIR"
@@ -89,7 +94,7 @@ echo "============================================"
 echo "  Frontend : http://localhost:5173"
 echo "  Backend  : http://localhost:8000"
 echo "  Worker   : http://localhost:9000"
-echo "  DB       : postgresql://sastia:sastia@localhost:5432/sastia"
+echo "  DB       : postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}"
 echo "============================================"
 echo ""
 echo "Press Ctrl+C to stop all services."

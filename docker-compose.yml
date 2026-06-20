@@ -9,8 +9,8 @@ services:
       - ./backend:/app
       - uploads:/app/uploads
     environment:
-      - DATABASE_URL=postgresql://sastia:sastia@db:5432/sastia
-      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-sastia}:${POSTGRES_PASSWORD:-sastia}@db:5432/${POSTGRES_DB:-sastia}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=1440
       - UPLOAD_DIR=/app/uploads
@@ -51,13 +51,11 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=sastia
-      - POSTGRES_PASSWORD=sastia
-      - POSTGRES_DB=sastia
+      - POSTGRES_USER=${POSTGRES_USER:-sastia}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - POSTGRES_DB=${POSTGRES_DB:-sastia}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sastia"]
       interval: 5s

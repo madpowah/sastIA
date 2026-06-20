@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models import User, Provider
 from app.schemas import ProviderCreate, ProviderResponse, ModelInfo, ProviderGroup
 from app.auth import get_current_user
+from app.crypto import encrypt_api_key, decrypt_api_key, mask_api_key
 
 router = APIRouter(prefix="/api/providers", tags=["Providers"])
 
@@ -119,7 +120,10 @@ def list_providers(
     db: Session = Depends(get_db),
 ):
     providers = db.query(Provider).filter(Provider.user_id == current_user.id).order_by(Provider.created_at.desc()).all()
-    return [ProviderResponse.model_validate(p) for p in providers]
+    resp = [ProviderResponse.model_validate(p) for p in providers]
+    for r, p in zip(resp, providers):
+        r.api_key = mask_api_key(decrypt_api_key(p.api_key))
+    return resp
 
 
 @router.post("/", response_model=ProviderResponse, status_code=status.HTTP_201_CREATED)
@@ -132,12 +136,14 @@ def create_provider(
         user_id=current_user.id,
         name=data.name,
         base_url=data.base_url.rstrip("/"),
-        api_key=data.api_key,
+        api_key=encrypt_api_key(data.api_key),
     )
     db.add(provider)
     db.commit()
     db.refresh(provider)
-    return ProviderResponse.model_validate(provider)
+    resp = ProviderResponse.model_validate(provider)
+    resp.api_key = mask_api_key(decrypt_api_key(provider.api_key))
+    return resp
 
 
 @router.delete("/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -172,18 +178,19 @@ def fetch_provider_models(
     headers = {
         "Content-Type": "application/json",
     }
-    if provider.api_key:
-        headers["Authorization"] = f"Bearer {provider.api_key}"
+    raw_key = decrypt_api_key(provider.api_key)
+    if raw_key:
+        headers["Authorization"] = f"Bearer {raw_key}"
 
     try:
         with httpx.Client(timeout=15.0) as client:
             resp = client.get(f"{provider.base_url}/models", headers=headers)
             resp.raise_for_status()
             data = resp.json()
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=502,
-            detail=f"Failed to fetch models from {provider.base_url}/models: {e}",
+            detail="Failed to fetch models from provider. Check server logs for details.",
         )
 
     models_data = data.get("data", data if isinstance(data, list) else [])

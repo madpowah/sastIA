@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
@@ -43,6 +43,7 @@ class AnalyzeRequest(BaseModel):
     audit_id: str
     user_id: str
     callback_url: str
+    callback_secret: Optional[str] = None
     repo_url: Optional[str] = None
     code_path: Optional[str] = None
     analysis_type: str = "code"
@@ -100,6 +101,19 @@ def _partial_log(audit_id: str) -> str:
     return "\n".join(parts)
 
 
+async def _callback_with_secret(url: str, secret: str | None, payload: dict):
+    import httpx
+
+    headers = {}
+    if secret:
+        headers["X-Callback-Secret"] = secret
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.post(url, json=payload, headers=headers)
+    except Exception as cb_err:
+        print(f"[worker] Callback failed: {cb_err}")
+
+
 async def run_analysis(job: AnalyzeRequest):
     audit_dir = WORK_DIR / job.audit_id
     audit_dir.mkdir(parents=True, exist_ok=True)
@@ -120,6 +134,7 @@ async def run_analysis(job: AnalyzeRequest):
             model_id=job.model_id,
             report_language=job.report_language,
             docker_analysis=job.docker_analysis,
+            callback_secret=job.callback_secret,
         )
         print(f"[worker] Analysis complete for audit {job.audit_id}")
         _write_meta(job.audit_id, status="completed", finished_at=datetime.now(timezone.utc).isoformat())
@@ -128,18 +143,12 @@ async def run_analysis(job: AnalyzeRequest):
         print(f"[worker] Error during analysis: {e}")
         _write_meta(job.audit_id, status="failed", error=str(e), finished_at=datetime.now(timezone.utc).isoformat())
 
-        import httpx
-
         partial = _partial_log(job.audit_id)
         error_payload = {
             "report_markdown": partial if partial else "",
             "error": str(e),
         }
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                await client.post(job.callback_url, json=error_payload)
-        except Exception as cb_err:
-            print(f"[worker] Callback also failed: {cb_err}")
+        await _callback_with_secret(job.callback_url, job.callback_secret, error_payload)
 
     finally:
         _active_jobs.pop(job.audit_id, None)

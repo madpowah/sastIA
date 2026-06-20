@@ -1,5 +1,6 @@
 import os
 import uuid
+import tempfile
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -37,11 +38,15 @@ def download_pdf(audit_id: uuid.UUID, current_user: User = Depends(get_current_u
     if not audit.report_markdown:
         raise HTTPException(status_code=404, detail="Report not yet generated")
 
-    pdf_path = os.path.join(os.path.dirname(audit.code_file_path or "/tmp"), f"report_{audit.id}.pdf") if audit.code_file_path else f"/tmp/report_{audit.id}.pdf"
-    generate_pdf(audit.report_markdown, pdf_path)
-
-    return FileResponse(
-        pdf_path,
-        media_type="application/pdf",
-        filename=f"rapport-audit-{audit.name}.pdf".replace(" ", "-").lower(),
-    )
+    fd, pdf_path = tempfile.mkstemp(suffix=".pdf", prefix=f"report_{audit.id}_")
+    os.close(fd)
+    try:
+        generate_pdf(audit.report_markdown, pdf_path)
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=f"rapport-audit-{audit.name}.pdf".replace(" ", "-").lower(),
+        )
+    finally:
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
