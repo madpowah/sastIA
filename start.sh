@@ -9,9 +9,17 @@ FRONTEND_PID=""
 WORKER_PID=""
 POSTGRES_CONTAINER=""
 
+# ── Load backend/.env if present (user configuration) ──
+if [ -f backend/.env ]; then
+    set -a
+    . backend/.env
+    set +a
+fi
+
 POSTGRES_USER="${POSTGRES_USER:-sastia}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$(python3 -c "import secrets; print(secrets.token_urlsafe(24))" 2>/dev/null || openssl rand -hex 16)}"
 POSTGRES_DB="${POSTGRES_DB:-sastia}"
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 
 cleanup() {
     echo ""
@@ -41,7 +49,7 @@ if command -v docker >/dev/null 2>&1; then
             -e POSTGRES_USER="${POSTGRES_USER}" \
             -e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
             -e POSTGRES_DB="${POSTGRES_DB}" \
-            -p 5432:5432 \
+            -p "${POSTGRES_PORT}:5432" \
             postgres:16-alpine 2>/dev/null || true)
         if [ -n "$POSTGRES_CONTAINER" ]; then
             echo "[OK] PostgreSQL started (container: sastia-db)"
@@ -67,7 +75,7 @@ fi
 echo ""
 echo "[..] Starting Backend (FastAPI) on :8000"
 cd backend
-DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}" \
+DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}}" \
 ../venv/bin/uvicorn app.main:app --reload --port 8000 --host 0.0.0.0 &
 BACKEND_PID=$!
 cd "$ROOT_DIR"
@@ -94,7 +102,7 @@ echo "============================================"
 echo "  Frontend : http://localhost:5173"
 echo "  Backend  : http://localhost:8000"
 echo "  Worker   : http://localhost:9000"
-echo "  DB       : postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}"
+echo "  DB       : ${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}}"
 echo "============================================"
 echo ""
 echo "Press Ctrl+C to stop all services."

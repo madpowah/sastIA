@@ -45,7 +45,10 @@ Tu DOIS suivre cet ordre stricte et transmettre les informations de l'étape pr�
 
 4. **Envoie le rapport final** à l'URL de callback
 
-5. **Active @SastIA_docker** pour supprimer le container et l'image du docker créé 
+5. **Nettoie les ressources Docker — OBLIGATOIRE**
+   - Active @SastIA_docker pour qu'il supprime le conteneur, l'image Docker et les fichiers temporaires créés pendant l'audit
+   - **ATTENTION : Cette étape est OBLIGATOIRE.** Ne pas nettoyer les ressources Docker = fuite de ressources et risque de sécurité
+   - Vérifie que @SastIA_docker a bien tout supprimé avant de terminer 
 
 ### Rappel des contraintes
 - Ne fais pas d'analyse toi-même — délègue TOUT aux agents spécialisés

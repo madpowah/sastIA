@@ -38,6 +38,7 @@ services:
     volumes:
       - ./worker:/app
       - sastia_worker_data:/tmp/sastia-worker
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - WORK_DIR=/tmp/sastia-worker
     depends_on:

@@ -46,10 +46,10 @@ async def run_manager_agent(
 2. Active @SastIA_analyzer en lui fournissant le même chemin {code_dir} et les infos Docker pour l'audit de sécurité
 3. Active @SastIA_rapport pour produire le rapport final
 4. Envoie le rapport final à l'URL de callback : {callback_url} en POSTant le JSON du rapport avec{secret_body} le header Content-Type: application/json
-5. Supprime les environnements de test une fois l'audit terminé"""
-        docker_cleanup = "\n5. Supprime les environnements de test une fois l'audit terminé"
+5. **NETTOYAGE OBLIGATOIRE** : Active @SastIA_docker pour supprimer le conteneur (docker stop + docker rm), l'image (docker rmi) et les fichiers temporaires. Vérifie que tout est bien supprimé avant de terminer."""
+        docker_cleanup = "\n5. **NETTOYAGE OBLIGATOIRE** : Active @SastIA_docker pour supprimer le conteneur et l'image Docker"
     else:
-        docker_steps = f"""1. Passe l'étape @SastIA_docker (non requis pour cette analyse)
+        docker_steps = f"""1. Passe l'étape @SastIA_docker (non requis pour cette analyse — pas de validation Docker)
 2. Active @SastIA_analyzer en lui fournissant le chemin {code_dir} pour l'audit de sécurité (sans validation Docker)
 3. Active @SastIA_rapport pour produire le rapport final
 4. Envoie le rapport final à l'URL de callback : {callback_url} en POSTant le JSON du rapport avec{secret_body} le header Content-Type: application/json"""

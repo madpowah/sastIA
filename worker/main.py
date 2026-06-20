@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from code_fetcher import fetch_code, _is_safe_url
 from opencode_runner import run_manager_agent
+from docker_cleanup import cleanup_audit_by_id
 
 WORK_DIR = Path(os.getenv("WORK_DIR", "/tmp/sastia-worker"))
 WORK_DIR.mkdir(parents=True, exist_ok=True)
@@ -152,6 +153,12 @@ async def run_analysis(job: AnalyzeRequest):
 
     finally:
         _active_jobs.pop(job.audit_id, None)
+        if job.docker_analysis:
+            try:
+                cleanup_audit_by_id(job.audit_id)
+                print(f"[worker] Docker cleanup done for audit {job.audit_id}")
+            except Exception as clean_err:
+                print(f"[worker] Docker cleanup error: {clean_err}")
 
 
 # ── Endpoints ──────────────────────────────────────────

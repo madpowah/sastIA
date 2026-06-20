@@ -61,6 +61,59 @@ Then open the app in your browser and login with:
 
 You will be prompted to change your password on first login.
 
+---
+
+## Configuration
+
+### `backend/.env`
+
+Toutes les variables sont configurables dans `backend/.env` (généré par `install.sh`).
+
+| Variable | Défaut | Description |
+|---|---|---|
+| `SECRET_KEY` | `(aléatoire)` | **Clé JWT** — doit être une chaîne aléatoire longue. **Critique pour la sécurité.** |
+| `DATABASE_URL` | `sqlite:///./sastia.db` | URL de la base de données. Utilise SQLite par défaut. |
+| `ALGORITHM` | `HS256` | Algorithme de signature JWT. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Durée de validité du token JWT (24h). |
+
+### PostgreSQL
+
+Pour utiliser PostgreSQL au lieu de SQLite :
+
+1. Assure-toi que PostgreSQL est disponible (local ou via Docker)
+2. Modifie `backend/.env` :
+
+```env
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=sastia
+POSTGRES_PASSWORD=mon-mot-de-passe
+POSTGRES_DB=sastia
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+```
+
+3. Si tu as déjà un PostgreSQL qui écoute sur le port 5432, change le port dans `.env` :
+
+```env
+POSTGRES_PORT=5433
+```
+
+4. Lance avec `./start.sh` — les variables du `.env` sont automatiquement chargées.
+
+Avec Docker Compose, les variables sont passées via l'environnement shell :
+
+```bash
+POSTGRES_PASSWORD=mon-mot-de-passe docker compose up -d
+```
+
+### Modèle IA par défaut
+
+```env
+OPENCODE_MODEL=opencode/deepseek-v4-flash-free
+```
+
+Ou configurable dans `worker/opencode_runner.py`.
+
 ### Prerequisites
 
 - Python 3.12+

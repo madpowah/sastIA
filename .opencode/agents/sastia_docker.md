@@ -40,6 +40,16 @@ Crée un environnement Docker complet et isolé pour exécuter le code à audite
 - Utilise `--network host` ou expose les ports explicitement pour que @SastIA_analyzer puisse tester
 - Le conteneur ne doit être accessible qu'en localhost
 
+## Cleanup (obligatoire en fin d'audit)
+QUAND @SastIA_manager t'active pour le nettoyage, tu DOIS exécuter dans l'ordre :
+1. `docker stop sastia-audit-{id}` — arrêter le conteneur
+2. `docker rm -f sastia-audit-{id}` — supprimer le conteneur
+3. `docker rmi -f sastia-audit-{id}` — supprimer l'image
+4. Supprime aussi le Dockerfile temporaire créé dans le dossier de l'audit
+- **NE JAMAIS** laisser de conteneur ou image orpheline
+- Si une commande échoue, passe à la suivante (le conteneur a peut-être déjà été supprimé)
+- Vérifie avec `docker ps -a --filter name=sastia-audit-{id}` et `docker images -q sastia-audit-{id}` que tout est bien supprimé
+
 ## Output
 Tu DOIS retourner un bloc structuré avec ces informations (obligatoire pour @SastIA_analyzer) :
 ```

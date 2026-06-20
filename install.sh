@@ -84,6 +84,15 @@ UPLOAD_DIR=./uploads
 WORKER_URL=http://localhost:9000
 CODE_DOWNLOAD_BASE_URL=http://localhost:8000
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+
+# ── PostgreSQL (optionnel) ────────────────────────────
+# Décommente et adapte si tu utilises PostgreSQL au lieu de SQLite
+# POSTGRES_HOST=localhost
+# POSTGRES_PORT=5433
+# POSTGRES_USER=sastia
+# POSTGRES_PASSWORD=change-me
+# POSTGRES_DB=sastia
+# DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
 ENVEOF
     echo "  -> backend/.env created (SQLite, dev defaults)"
 else
