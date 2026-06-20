@@ -63,57 +63,6 @@ You will be prompted to change your password on first login.
 
 ---
 
-## Configuration
-
-### `backend/.env`
-
-Toutes les variables sont configurables dans `backend/.env` (généré par `install.sh`).
-
-| Variable | Défaut | Description |
-|---|---|---|
-| `SECRET_KEY` | `(aléatoire)` | **Clé JWT** — doit être une chaîne aléatoire longue. **Critique pour la sécurité.** |
-| `DATABASE_URL` | `sqlite:///./sastia.db` | URL de la base de données. Utilise SQLite par défaut. |
-| `ALGORITHM` | `HS256` | Algorithme de signature JWT. |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Durée de validité du token JWT (24h). |
-
-### PostgreSQL
-
-Pour utiliser PostgreSQL au lieu de SQLite :
-
-1. Assure-toi que PostgreSQL est disponible (local ou via Docker)
-2. Modifie `backend/.env` :
-
-```env
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=sastia
-POSTGRES_PASSWORD=mon-mot-de-passe
-POSTGRES_DB=sastia
-DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-```
-
-3. Si tu as déjà un PostgreSQL qui écoute sur le port 5432, change le port dans `.env` :
-
-```env
-POSTGRES_PORT=5433
-```
-
-4. Lance avec `./start.sh` — les variables du `.env` sont automatiquement chargées.
-
-Avec Docker Compose, les variables sont passées via l'environnement shell :
-
-```bash
-POSTGRES_PASSWORD=mon-mot-de-passe docker compose up -d
-```
-
-### Modèle IA par défaut
-
-```env
-OPENCODE_MODEL=opencode/deepseek-v4-flash-free
-```
-
-Ou configurable dans `worker/opencode_runner.py`.
-
 ### Prerequisites
 
 - Python 3.12+
@@ -132,6 +81,92 @@ sudo apt-get install -y libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0
 These are installed automatically by `install.sh` when `sudo` is available.
 
 ---
+
+## Configuration — `backend/.env`
+
+Généré par `./install.sh`. Toute modification nécessite un redémarrage du backend.
+
+| Variable | Défaut | Description |
+|---|---|---|
+| `SECRET_KEY` | `(aléatoire à l'install)` | **Clé JWT** — chaîne aléatoire de 48 caractères. **Critique.** Si absente, le backend refuse de démarrer. |
+| `DATABASE_URL` | `sqlite:///./sastia.db` | URL de connexion à la base de données (SQLite ou PostgreSQL). |
+| `ALGORITHM` | `HS256` | Algorithme de signature JWT. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Durée de validité du token JWT (24h). |
+| `CORS_ORIGINS` | `http://localhost:3000,...` | URLs autorisées pour les requêtes navigateur (séparées par des virgules). |
+| `UPLOAD_DIR` | `./uploads` | Dossier de stockage des fichiers uploadés. |
+| `WORKER_URL` | `http://localhost:9000` | URL du worker d'analyse. |
+| `CODE_DOWNLOAD_BASE_URL` | `http://localhost:8000` | URL publique du backend pour le callback worker. |
+
+---
+
+### Installation sur un serveur
+
+```bash
+git clone https://github.com/madpowah/sastIA.git
+cd sastIA
+chmod +x install.sh start.sh
+./install.sh
+```
+
+#### 1. Port PostgreSQL déjà utilisé (port 5432 occupé)
+
+```bash
+# backend/.env
+POSTGRES_PORT=5433
+DATABASE_URL=postgresql://sastia:mon-mot-de-passe@localhost:5433/sastia
+```
+
+#### 2. CORS — Origin not allowed
+
+Ajoute l'URL de ton domaine dans `CORS_ORIGINS` :
+
+```env
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8000,http://TON-DOMAINE.com
+```
+
+#### 3. Clé JWT (SECRET_KEY)
+
+Générée automatiquement par `install.sh`. Pour en générer une manuellement :
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Copie le résultat dans `backend/.env` :
+
+```env
+SECRET_KEY=ta-cle-generee-ici
+```
+
+---
+
+### PostgreSQL (optionnel)
+
+Par défaut l'application utilise SQLite. Pour PostgreSQL :
+
+```env
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=sastia
+POSTGRES_PASSWORD=mon-mot-de-passe
+POSTGRES_DB=sastia
+DATABASE_URL=postgresql://sastia:mon-mot-de-passe@localhost:5432/sastia
+```
+
+Avec Docker Compose :
+```bash
+POSTGRES_PASSWORD=mon-mot-de-passe docker compose up -d
+```
+
+---
+
+### Modèle IA par défaut
+
+```env
+OPENCODE_MODEL=opencode/deepseek-v4-flash-free
+```
+
+Ou dans `worker/opencode_runner.py`.
 
 ## Features
 
