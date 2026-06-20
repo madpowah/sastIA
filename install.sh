@@ -92,7 +92,7 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 # POSTGRES_USER=sastia
 # POSTGRES_PASSWORD=change-me
 # POSTGRES_DB=sastia
-# DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+# DATABASE_URL=postgresql://sastia:change-me@localhost:5433/sastia
 ENVEOF
     echo "  -> backend/.env created (SQLite, dev defaults)"
 else
