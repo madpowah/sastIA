@@ -11,7 +11,7 @@ from typing import Optional
 from pydantic import BaseModel
 from app.database import get_db
 from app.models import User, Audit, AuditStatus, DockerStatus
-from app.schemas import AuditCreate, AuditResponse, AuditListResponse, DashboardStats
+from app.schemas import AuditCreateForm, AuditResponse, AuditListResponse, DashboardStats
 from app.auth import get_current_user
 from app.config import get_settings
 
@@ -64,26 +64,20 @@ def list_audits(current_user: User = Depends(get_current_user), db: Session = De
 
 @router.post("/", response_model=AuditResponse, status_code=status.HTTP_201_CREATED)
 def create_audit(
-    name: str = Form(...),
-    description: Optional[str] = Form(None),
-    repo_url: Optional[str] = Form(None),
-    analysis_type: str = Form("code"),
-    docker_analysis_enabled: bool = Form(False),
-    model_id: Optional[str] = Form(None),
-    report_language: str = Form("en"),
+    data: AuditCreateForm = Form(...),
     code_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     audit = Audit(
         user_id=current_user.id,
-        name=name,
-        description=description,
-        repo_url=repo_url,
-        analysis_type=analysis_type,
-        docker_analysis_enabled=1 if docker_analysis_enabled else 0,
-        model_id=model_id,
-        report_language=report_language,
+        name=data.name,
+        description=data.description,
+        repo_url=data.repo_url,
+        analysis_type=data.analysis_type,
+        docker_analysis_enabled=1 if data.docker_analysis_enabled else 0,
+        model_id=data.model_id,
+        report_language=data.report_language,
         status=AuditStatus.PENDING,
         docker_status=DockerStatus.NOT_STARTED if docker_analysis_enabled else DockerStatus.NOT_STARTED,
     )

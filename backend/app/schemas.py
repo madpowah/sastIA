@@ -91,6 +91,17 @@ class AuditCreate(BaseModel):
     report_language: str = "en"
 
 
+class AuditCreateForm(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    name: str
+    description: Optional[str] = None
+    repo_url: Optional[str] = None
+    analysis_type: str = "code"
+    docker_analysis_enabled: bool = False
+    model_id: Optional[str] = None
+    report_language: str = "en"
+
+
 class ProviderCreate(BaseModel):
     name: str
     base_url: str
