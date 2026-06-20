@@ -2,7 +2,7 @@ import os
 import uuid
 import tempfile
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Audit, AuditStatus
@@ -42,10 +42,12 @@ def download_pdf(audit_id: uuid.UUID, current_user: User = Depends(get_current_u
     os.close(fd)
     try:
         generate_pdf(audit.report_markdown, pdf_path)
-        return FileResponse(
-            pdf_path,
+        with open(pdf_path, "rb") as f:
+            content = f.read()
+        return Response(
+            content=content,
             media_type="application/pdf",
-            filename=f"rapport-audit-{audit.name}.pdf".replace(" ", "-").lower(),
+            headers={"Content-Disposition": f'attachment; filename="rapport-audit-{audit.name}.pdf"'.replace(" ", "-").lower()},
         )
     finally:
         if os.path.exists(pdf_path):
