@@ -28,7 +28,7 @@ REPO_URL_PATTERN = re.compile(
     r"^(https?://[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}(:\d+)?/[-a-zA-Z0-9_.~%/]+"
     r"|git@[a-zA-Z0-9][-a-zA-Z0-9.]*:[-a-zA-Z0-9_.~%/]+"
     r"|ssh://[a-zA-Z0-9][-a-zA-Z0-9.]*/[-a-zA-Z0-9_.~%/]+"
-    r")\.git/?$"
+    r")(\.git)?/?$"
 )
 
 
