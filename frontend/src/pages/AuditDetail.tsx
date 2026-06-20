@@ -133,9 +133,9 @@ export default function AuditDetail() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{audit.name}</h1>
             <p className="text-gray-500 mt-1">
-              {t('audit.detail.created')} {new Date(audit.created_at).toLocaleDateString(t('common.dateFormat'), {
+              {t('audit.detail.created')} {audit.created_at ? new Date(audit.created_at).toLocaleDateString(t('common.dateFormat'), {
                 day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-              })}
+              }) : '-'}
             </p>
           </div>
           <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${status.bg} ${status.color}`}>
