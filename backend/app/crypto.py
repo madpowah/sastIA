@@ -7,32 +7,46 @@ from app.config import get_settings
 
 _settings = get_settings()
 
+_LEGACY_SALT = b"sastia-api-key-encryption-salt-v1"
 
-def _derive_fernet_key() -> bytes:
+
+def _derive_fernet_key(salt: bytes) -> bytes:
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"sastia-api-key-encryption-salt-v1",
+        salt=salt,
         iterations=600_000,
     )
     key = base64.urlsafe_b64encode(kdf.derive(_settings.SECRET_KEY.encode()))
     return key
 
 
-_fernet = Fernet(_derive_fernet_key())
-
-
 def encrypt_api_key(plaintext: str | None) -> str | None:
     if plaintext is None:
         return None
-    return _fernet.encrypt(plaintext.encode()).decode()
+    salt = os.urandom(16)
+    key = _derive_fernet_key(salt)
+    f = Fernet(key)
+    token = f.encrypt(plaintext.encode())
+    return base64.b64encode(salt + token).decode()
 
 
 def decrypt_api_key(ciphertext: str | None) -> str | None:
     if ciphertext is None:
         return None
     try:
-        return _fernet.decrypt(ciphertext.encode()).decode()
+        raw = base64.b64decode(ciphertext.encode())
+        salt = raw[:16]
+        token = raw[16:]
+        key = _derive_fernet_key(salt)
+        f = Fernet(key)
+        return f.decrypt(token).decode()
+    except Exception:
+        pass
+    try:
+        key = _derive_fernet_key(_LEGACY_SALT)
+        f = Fernet(key)
+        return f.decrypt(ciphertext.encode()).decode()
     except Exception:
         return ciphertext
 
