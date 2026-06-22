@@ -165,8 +165,8 @@ def _dispatch_to_worker(audit: Audit, user: User, db: Session):
 
 
 @router.get("/{audit_id}/download", include_in_schema=False)
-def download_code(audit_id: uuid.UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    audit = db.query(Audit).filter(Audit.id == str(audit_id), Audit.user_id == current_user.id).first()
+def download_code(audit_id: uuid.UUID, db: Session = Depends(get_db)):
+    audit = db.query(Audit).filter(Audit.id == str(audit_id)).first()
     if not audit or not audit.code_file_path:
         raise HTTPException(status_code=404, detail="No code file available")
 
