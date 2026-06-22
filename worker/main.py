@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from code_fetcher import fetch_code, _is_safe_url
+from code_fetcher import fetch_code, _is_safe_url, _is_trusted_url
 from opencode_runner import run_manager_agent
 from docker_cleanup import cleanup_audit_by_id
 
