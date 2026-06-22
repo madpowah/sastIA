@@ -165,7 +165,7 @@ async def run_analysis(job: AnalyzeRequest):
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest):
-    if request.code_path and not _is_safe_url(request.code_path):
+    if request.code_path and not _is_safe_url(request.code_path) and not _is_trusted_url(request.code_path, request.backend_base_url):
         raise HTTPException(status_code=400, detail="Invalid code_path URL")
     asyncio.create_task(run_analysis(request))
     return AnalyzeResponse(

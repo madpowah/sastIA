@@ -58,6 +58,12 @@ def _is_safe_url(url: str) -> bool:
         return False
 
 
+def _is_trusted_url(url: str, trusted_base: str | None) -> bool:
+    if not trusted_base:
+        return False
+    return url.startswith(trusted_base.rstrip("/") + "/")
+
+
 async def fetch_code(job, target_dir: Path) -> Path:
     target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -106,7 +112,7 @@ async def _download_or_copy_code(job, target_dir: Path) -> Path:
     code_file = target_dir / f"code{ext}"
 
     if job.code_path.startswith("http"):
-        if not _is_safe_url(job.code_path):
+        if not _is_safe_url(job.code_path) and not _is_trusted_url(job.code_path, job.backend_base_url):
             raise ValueError(f"Blocked potentially unsafe URL: {job.code_path}")
         async with httpx.AsyncClient() as client:
             resp = await client.get(job.code_path)
@@ -118,7 +124,7 @@ async def _download_or_copy_code(job, target_dir: Path) -> Path:
         # code_path is a path on the backend filesystem — try via backend API
         base = job.backend_base_url or "http://backend:8000"
         download_url = f"{base}/api/audits/{job.audit_id}/download"
-        if not _is_safe_url(download_url):
+        if not _is_safe_url(download_url) and not _is_trusted_url(download_url, job.backend_base_url):
             raise ValueError(f"Blocked potentially unsafe download URL: {download_url}")
         async with httpx.AsyncClient() as client:
             resp = await client.get(download_url)
