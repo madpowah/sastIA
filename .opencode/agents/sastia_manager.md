@@ -39,21 +39,15 @@ Tu DOIS suivre cet ordre stricte et transmettre les informations de l'étape pr�
    - Les **informations du conteneur Docker** récupérées de @SastIA_docker (nom, ports, URL, etc.)
    - Insiste explicitement : il DOIT tester les vulnérabilités contre le Docker
 
-3. **Active @SastIA_rapport** en lui donnant :
-   - Le **rapport complet** fourni par @SastIA_analyzer
-   - Le **chemin de sortie** pour écrire le fichier JSON
-
-4. **Envoie le rapport final** à l'URL de callback
-
-5. **Nettoie les ressources Docker — OBLIGATOIRE**
-   - Active @SastIA_docker pour qu'il supprime le conteneur, l'image Docker et les fichiers temporaires créés pendant l'audit
-   - **ATTENTION : Cette étape est OBLIGATOIRE.** Ne pas nettoyer les ressources Docker = fuite de ressources et risque de sécurité
-   - Vérifie que @SastIA_docker a bien tout supprimé avant de terminer 
+3. Active @SastIA_rapport pour produire le rapport final et l'écrire dans le fichier JSON au chemin indiqué
+4. **NETTOYAGE OBLIGATOIRE** : Active @SastIA_docker pour supprimer le conteneur, l'image Docker et les fichiers temporaires créés pendant l'audit
+5. Vérifie que @SastIA_docker a bien tout supprimé avant de terminer 
 
 ### Rappel des contraintes
 - Ne fais pas d'analyse toi-même — délègue TOUT aux agents spécialisés
 - Transmets toujours les infos Docker (conteneur, ports) à @SastIA_analyzer
-- Le rapport final DOIT contenir un tableau de synthèse parsable automatiquement
+- Le rapport final DOIT être écrit dans un fichier JSON au chemin indiqué par le prompt
+- Ne fais PAS de requête HTTP ni curl — le callback est géré automatiquement
 
 ## Output
-- Envoie le rapport final à l'URL http://localhost:8000/api/audits/{id}/callback
+- Le rapport JSON final est écrit dans le fichier au chemin indiqué par le prompt d'appel

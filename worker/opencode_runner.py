@@ -36,23 +36,18 @@ async def run_manager_agent(
         "en": "The final report MUST be written in English.",
     }.get(report_language, "The final report MUST be written in English.")
 
-    secret_body = ""
-    if callback_secret:
-        secret_body = f', "callback_secret": "{callback_secret}"'
+    FINAL_REPORT_PATH = os.path.join(audit_dir, "final-report.json")
 
     docker_steps = ""
     if docker_analysis:
         docker_steps = f"""1. Active @SastIA_docker en lui indiquant le chemin {code_dir} pour qu'il mette en place l'environnement de test
 2. Active @SastIA_analyzer en lui fournissant le même chemin {code_dir} et les infos Docker pour l'audit de sécurité
-3. Active @SastIA_rapport pour produire le rapport final
-4. Envoie le rapport final à l'URL de callback : {callback_url} en POSTant le JSON du rapport avec{secret_body} le header Content-Type: application/json
-5. **NETTOYAGE OBLIGATOIRE** : Active @SastIA_docker pour supprimer le conteneur (docker stop + docker rm), l'image (docker rmi) et les fichiers temporaires. Vérifie que tout est bien supprimé avant de terminer."""
-        docker_cleanup = "\n5. **NETTOYAGE OBLIGATOIRE** : Active @SastIA_docker pour supprimer le conteneur et l'image Docker"
+3. Active @SastIA_rapport pour produire le rapport final ÉCRIS-LE au chemin : {FINAL_REPORT_PATH}
+4. **NETTOYAGE OBLIGATOIRE** : Active @SastIA_docker pour supprimer le conteneur (docker stop + docker rm), l'image (docker rmi) et les fichiers temporaires. Vérifie que tout est bien supprimé avant de terminer."""
     else:
         docker_steps = f"""1. Passe l'étape @SastIA_docker (non requis pour cette analyse — pas de validation Docker)
 2. Active @SastIA_analyzer en lui fournissant le chemin {code_dir} pour l'audit de sécurité (sans validation Docker)
-3. Active @SastIA_rapport pour produire le rapport final
-4. Envoie le rapport final à l'URL de callback : {callback_url} en POSTant le JSON du rapport avec{secret_body} le header Content-Type: application/json"""
+3. Active @SastIA_rapport pour produire le rapport final et ÉCRIS-LE au chemin JSON : {FINAL_REPORT_PATH}"""
 
     prompt = f"""Tu es SastIA_manager, l'orchestrateur d'audit de sécurité.
 
@@ -86,11 +81,12 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
     cmd = [
         *opencode_cmd, "run",
         "--model", model,
-        "--dir", code_dir,
+        "--dir", audit_dir,
         prompt,
     ]
 
     print(f"[opencode] Launching agent with model {model}...")
+    print(f"[opencode] Workspace dir: {audit_dir}")
     print(f"[opencode] Code dir: {code_dir}")
     print(f"[opencode] Callback: {callback_url}")
     print(f"[opencode] Log file: {worker_log}")
@@ -127,7 +123,7 @@ Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisé
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=code_dir,
+            cwd=audit_dir,
         )
 
         with open(worker_log, "w", encoding="utf-8") as lf:

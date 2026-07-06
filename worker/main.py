@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from code_fetcher import fetch_code, _is_safe_url, _is_trusted_url
 from opencode_runner import run_manager_agent
 from docker_cleanup import cleanup_audit_by_id
+from sastia_report import merge_reports
 
 WORK_DIR = Path(os.getenv("WORK_DIR", "/tmp/sastia-worker"))
 WORK_DIR.mkdir(parents=True, exist_ok=True)
@@ -137,7 +138,18 @@ async def run_analysis(job: AnalyzeRequest):
             docker_analysis=job.docker_analysis,
             callback_secret=job.callback_secret,
         )
-        print(f"[worker] Analysis complete for audit {job.audit_id}")
+        print(f"[worker] Agent analysis complete for audit {job.audit_id}")
+
+        # ── Post-agent: merge raw results with agent report and callback ──
+        audit_dir_path = audit_dir
+        agent_report = audit_dir_path / "final-report.json"
+        payload = merge_reports(audit_dir_path, agent_report)
+        print(f"[worker] Merged report: {len(payload['vulnerabilities'])} vulns, "
+              f"metrics={payload['metrics']}")
+
+        await _callback_with_secret(job.callback_url, job.callback_secret, payload)
+        print(f"[worker] Callback completed for audit {job.audit_id}")
+
         _write_meta(job.audit_id, status="completed", finished_at=datetime.now(timezone.utc).isoformat())
 
     except Exception as e:
