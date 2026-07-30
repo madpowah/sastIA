@@ -42,6 +42,7 @@ interface DashboardData {
   total_high: number
   total_medium: number
   total_low: number
+  total_info: number
   recent_audits: Audit[]
 }
 
@@ -162,6 +163,13 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-blue-700">{t('dashboard.low')}</span>
               </div>
               <p className="text-2xl font-bold text-blue-700">{data?.total_low || 0}</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className="w-4 h-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">Info</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-700">{data?.total_info || 0}</p>
             </div>
           </div>
         </div>

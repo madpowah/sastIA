@@ -142,6 +142,7 @@ class DashboardStats(BaseModel):
     total_high: int
     total_medium: int
     total_low: int
+    total_info: int = 0
     recent_audits: list[AuditListResponse]
 
 

@@ -29,13 +29,14 @@ async def run_manager_agent(
     partial_file = os.path.join(audit_dir, "agent-partial.md")
     prompt_file = os.path.join(audit_dir, "prompt.txt")
 
-    source_desc = repo_url or f"fichier uploadé (extrait dans {code_dir})"
+    source_desc = repo_url or f"uploaded file (extracted to {code_dir})"
 
     report_language_instruction = {
         "fr": "Le rapport final DOIT être rédigé en français.",
         "en": "The final report MUST be written in English.",
     }.get(report_language, "The final report MUST be written in English.")
 
+<<<<<<< HEAD
     FINAL_REPORT_PATH = os.path.join(audit_dir, "final-report.json")
 
     docker_steps = ""
@@ -48,28 +49,58 @@ async def run_manager_agent(
         docker_steps = f"""1. Passe l'étape @SastIA_docker (non requis pour cette analyse — pas de validation Docker)
 2. Active @SastIA_analyzer en lui fournissant le chemin {code_dir} pour l'audit de sécurité (sans validation Docker)
 3. Active @SastIA_rapport pour produire le rapport final et ÉCRIS-LE au chemin JSON : {FINAL_REPORT_PATH}"""
+=======
+    docker_validation = ""
+    docker_cleanup = ""
+    if docker_analysis:
+        docker_validation = f"""
+5. **Docker Build** : Active @SastIA_docker avec CODE_DIR={code_dir} pour builder l'image et lancer le conteneur. Récupère ## Docker Environment Summary.
+>>>>>>> fa71c93 (v0.2: VulnHunter pipeline + real Docker validation)
 
-    prompt = f"""Tu es SastIA_manager, l'orchestrateur d'audit de sécurité.
+6. **Docker Validation** : Active @SastIA_analyzer avec :
+   "Validation Docker. VULNHUNT_DIR={code_dir}/vulnhunt_results DOCKER_URL=<url> DOCKER_CONTAINER=<name>
+    Exécute les PoC de poc/ et exploit_tests/ contre le conteneur.
+    Marque : VALIDATED / FAILED / NOT-TESTED. Écris validation_results.md"
+
+7. **Cleanup Docker** : Active @SastIA_docker pour supprimer conteneur + image
+"""
+        docker_cleanup = "\n8. **NETTOYAGE** : Active @SastIA_docker pour supprimer conteneur + image"
+
+    phases_dir = os.path.expanduser("~/.config/opencode/skills/vulnhunt/phases")
+    skill_dir = os.path.expanduser("~/.config/opencode/skills/vulnhunt")
+
+    prompt = f"""Tu es SastIA_manager, l'orchestrateur d'audit de sécurité basé sur la méthodologie VulnHunter.
 
 Le code source à analyser se trouve ici : {code_dir}
 Il provient de : {source_desc}
 L'ID de l'audit est : {audit_id}
 {report_language_instruction}
 
-    Consignes :
-{docker_steps}
+## Variables
+- CODE_DIR={code_dir}
+- VULNHUNT_DIR={code_dir}/vulnhunt_results
+- PHASES_DIR={phases_dir}
+- SKILL_DIR={skill_dir}
+- CALLBACK_URL={callback_url} (le worker envoie le callback automatiquement)
+- DOCKER_ENABLED={'true' if docker_analysis else 'false'}
 
-Le rapport DOIT contenir un tableau de synthèse avec le format suivant pour que les compteurs soient parsés automatiquement :
+Compatible tous modèles. Statique par défaut. Si DOCKER_ENABLED, validation Docker après Phase 3.
 
-| Severity | Count |
-|----------|-------|
-| Critical | N |
-| High     | N |
-| Medium   | N |
-| Low      | N |
+## Pipeline
 
-QUAND TU ACTIVES @SastIA_analyzer et @SastIA_rapport, **transmets-leur explicitement** la langue du rapport : "{report_language_instruction}"
-Ne fais pas d'analyse toi-même, délègue chaque étape aux agents spécialisés (@SastIA_docker, @SastIA_analyzer, @SastIA_rapport)."""
+Suis `${{SKILL_DIR}}/SKILL.md`. Phases dans `${{PHASES_DIR}}/`.
+
+1. **Phase 1 - Recon** : Active @SastIA_analyzer : "Phase 1. VULNHUNT_DIR={code_dir}/vulnhunt_results PHASES_DIR={phases_dir}. Suis phase1_recon.md. Écris phase1_output.md"
+
+2. **Phase 2 - Hunt** : Lis ${{PHASES_DIR}}/phase2_hunt.md. Crée les partitions. Dispatche les agents de traçage (3/partition + sink-driven). Utilise @SastIA_analyzer.
+
+3. **Phase 2b - Verify** : Active @SastIA_analyzer : "Phase 2b. Mêmes vars. Suis phase2b_verify.md. Écris phase2b_output.md"
+
+4. **Phase 3 - Reproduce/Fix/Sweep** : Active @SastIA_analyzer : "Phase 3. Mêmes vars. Suis phase3_reproduce_test.md, phase3c_fixes.md, phase3d_sweep.md. Écris poc/, exploit_tests/, phase3_output.md, phase3d_output.md"
+{docker_validation}
+7. **Rapport** : Active @SastIA_rapport. Suis ${{PHASES_DIR}}/phase4_report.md. Inclus validation_results.md si dispo. Écris le JSON dans ${{VULNHUNT_DIR}}/report.json
+{docker_cleanup}
+IMPORTANT : Ne fais pas d'analyse toi-même. Dispatche TOUT."""
 
     DEFAULT_MODEL = "opencode/deepseek-v4-flash-free"
 

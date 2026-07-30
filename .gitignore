@@ -10,3 +10,4 @@ backend/uploads/
 .DS_Store
 node_modules/
 *.db
+uploads/

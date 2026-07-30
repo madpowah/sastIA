@@ -113,3 +113,20 @@
 .report-content pre {
   @apply bg-gray-900 text-cyan-100 rounded-xl p-4 overflow-x-auto text-sm;
 }
+
+.report-content table tr:nth-child(even) {
+  @apply bg-gray-50;
+}
+
+.report-content table tr:hover {
+  @apply bg-blue-50;
+}
+
+/* Severity badges in vulnhunt reports */
+.report-content td:first-child code {
+  @apply bg-transparent text-inherit px-0;
+}
+
+.report-content strong:contains("Critical") {
+  @apply text-red-600;
+}

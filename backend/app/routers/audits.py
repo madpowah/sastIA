@@ -19,19 +19,33 @@ ALLOWED_EXTENSIONS = {".zip", ".tar", ".gz", ".tgz", ".bz2", ".py", ".js", ".ts"
 
 
 def parse_vulnerabilities_from_markdown(markdown: str) -> dict:
-    counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-    for severity, keywords in [
-        ("critical", [r"critiqu", r"critical"]),
-        ("high", [r"[ée]lev", r"high"]),
-        ("medium", [r"moyen", r"medium"]),
-        ("low", [r"basse", r"low"]),
-    ]:
-        for kw in keywords:
-            pattern = rf"{kw}.*?[|]\s*(\d+)\s*(?:\||$)"
-            match = re.search(pattern, markdown, re.IGNORECASE | re.MULTILINE | re.DOTALL)
-            if match:
-                counts[severity] = int(match.group(1))
-                break
+    counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+
+    # Try parsing VulnHunter-style Summary table: | ID | Title | CWE | Severity | Status |
+    vulnhunt_pattern = r"\|\s*(VULN-\d+)\s*\|\s*[^|]*\|\s*CWE-\d+\s*\|\s*(Critical|High|Medium|Low|Info|Informational)\s*\|"
+    for match in re.finditer(vulnhunt_pattern, markdown, re.IGNORECASE):
+        sev = match.group(2).lower()
+        if sev == "informational":
+            sev = "info"
+        if sev in counts:
+            counts[sev] += 1
+
+    # Fallback: try legacy severity summary table
+    if sum(counts.values()) == 0:
+        for severity, keywords in [
+            ("critical", [r"critiqu", r"critical"]),
+            ("high", [r"[ée]lev", r"high"]),
+            ("medium", [r"moyen", r"medium"]),
+            ("low", [r"basse", r"low"]),
+            ("info", [r"info", r"informational"]),
+        ]:
+            for kw in keywords:
+                pattern = rf"{kw}.*?[|]\s*(\d+)\s*(?:\||$)"
+                match = re.search(pattern, markdown, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                if match:
+                    counts[severity] = int(match.group(1))
+                    break
+
     return counts
 
 settings = get_settings()
@@ -51,6 +65,7 @@ def get_dashboard(current_user: User = Depends(get_current_user), db: Session = 
         total_high=sum(a.vulnerabilities_high for a in audits),
         total_medium=sum(a.vulnerabilities_medium for a in audits),
         total_low=sum(a.vulnerabilities_low for a in audits),
+        total_info=sum(a.vulnerabilities_info for a in audits),
         recent_audits=[AuditListResponse.model_validate(a) for a in audits[:10]],
     )
     return stats
@@ -123,10 +138,11 @@ def start_analysis(audit_id: uuid.UUID, current_user: User = Depends(get_current
     audit = db.query(Audit).filter(Audit.id == str(audit_id), Audit.user_id == current_user.id).first()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
-    if audit.status != AuditStatus.PENDING:
+    if audit.status not in (AuditStatus.PENDING, AuditStatus.FAILED):
         raise HTTPException(status_code=400, detail="Audit already started")
 
     audit.status = AuditStatus.ANALYZING_CODE
+    audit.error_message = None
     db.commit()
     db.refresh(audit)
 
@@ -164,6 +180,20 @@ def _dispatch_to_worker(audit: Audit, user: User, db: Session):
         print(f"[backend] Failed to dispatch to worker: {e}")
 
 
+ARTIFACTS_DIR = os.path.join(settings.UPLOAD_DIR, "artifacts")
+
+
+@router.get("/{audit_id}/artifacts/{filepath:path}", include_in_schema=False)
+def serve_artifact(audit_id: str, filepath: str):
+    safe_path = os.path.normpath(filepath).lstrip("/")
+    if ".." in safe_path.split(os.sep):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    full_path = os.path.join(ARTIFACTS_DIR, audit_id, safe_path)
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    return FileResponse(full_path)
+
+
 @router.get("/{audit_id}/download", include_in_schema=False)
 def download_code(audit_id: uuid.UUID, db: Session = Depends(get_db)):
     audit = db.query(Audit).filter(Audit.id == str(audit_id)).first()
@@ -186,7 +216,7 @@ class CallbackBody(BaseModel):
     error: Optional[str] = None
 
 
-SEVERITY_MAP = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low"}
+SEVERITY_MAP = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low", "info": "Info", "informational": "Info"}
 CVSS_THRESHOLDS = {"Critical": 9.0, "High": 7.0, "Medium": 4.0, "Low": 0.0}
 
 
@@ -204,12 +234,15 @@ def _build_markdown_from_vulns(vulns: list[dict], summary: str = "", metrics: Op
     high = metrics.get("high", 0)
     medium = metrics.get("medium", 0)
     low = metrics.get("low", 0)
-    total = metrics.get("total_vulnerabilities", critical + high + medium + low)
+    info = metrics.get("info", 0) or metrics.get("informational", 0)
+    total = metrics.get("total_vulnerabilities", critical + high + medium + low + info)
 
     if not total:
         for v in vulns:
             sev = v.get("severity", "").lower()
-            if sev in SEVERITY_MAP:
+            if sev in ("info", "informational"):
+                info += 1
+            elif sev in SEVERITY_MAP:
                 if sev == "critical": critical += 1
                 elif sev == "high": high += 1
                 elif sev == "medium": medium += 1
@@ -220,59 +253,71 @@ def _build_markdown_from_vulns(vulns: list[dict], summary: str = "", metrics: Op
                 elif s == "High": high += 1
                 elif s == "Medium": medium += 1
                 else: low += 1
-        total = critical + high + medium + low
+        total = critical + high + medium + low + info
 
-    lines = ["# Rapport d'Audit"]
+    lines = ["# SAST IA Security Audit Report"]
     if summary:
         lines.append(f"\n{summary}")
-    lines.append(f"\n## Synthèse\n")
+    lines.append(f"\n## Summary\n")
     lines.append("| Severity | Count |")
     lines.append("|----------|-------|")
     lines.append(f"| Critical | {critical} |")
     lines.append(f"| High     | {high} |")
     lines.append(f"| Medium   | {medium} |")
     lines.append(f"| Low      | {low} |")
-    lines.append(f"\n**Total: {total} vulnérabilités**")
+    if info:
+        lines.append(f"| Info     | {info} |")
+    lines.append(f"\n**Total: {total} vulnerabilities**")
 
     if vulns:
-        lines.append(f"\n## Détail des vulnérabilités\n")
+        lines.append(f"\n## Vulnerability Details\n")
         for v in vulns:
+            vid = v.get("id", "")
             severity = v.get("severity", v.get("type", "Info"))
             cvss = v.get("cvss", "")
-            title = v.get("title", v.get("id", "Vulnérabilité"))
+            title = v.get("title", vid or "Vulnerability")
             file_path = v.get("file_path", "")
             line = v.get("line", "")
             cwe = v.get("cwe", "")
             description = v.get("description", "")
             impact = v.get("impact", "")
             recommendation = v.get("recommendation", "")
-            validation = v.get("validation_status", "") or "Non validé"
+            validation = v.get("validation_status", "") or "Not validated"
             code_snippet = v.get("code_snippet", "")
             remediation = v.get("remediation", "")
             proof = v.get("proof", "")
+            entry_point = v.get("entry_point", "")
+            data_flow = v.get("data_flow", "")
+            root_cause = v.get("root_cause", "")
 
             if code_snippet:
                 code_snippet = re.sub(r'^```\w*\s*\n?', '', code_snippet)
                 code_snippet = re.sub(r'\n?```\s*$', '', code_snippet)
 
-            lines.append(f"### {v.get('id', '')} — {title}")
-            lines.append(f"- **Sévérité**: {severity} | **CVSS**: {cvss} | **Statut**: {validation}")
+            lines.append(f"### {vid} — {title}")
+            lines.append(f"- **Severity**: {severity} | **CVSS**: {cvss} | **Status**: {validation}")
             if file_path:
-                lines.append(f"- **Fichier**: `{file_path}`" + (f" | **Ligne**: {line}" if line else ""))
+                lines.append(f"- **File**: `{file_path}`" + (f" | **Line**: {line}" if line else ""))
             if cwe:
                 lines.append(f"- **CWE**: {cwe}")
+            if entry_point:
+                lines.append(f"- **Entry Point**: {entry_point}")
+            if data_flow:
+                lines.append(f"- **Data Flow**: {data_flow}")
             if description:
                 lines.append(f"\n**Description**\n\n{description}")
             if impact:
                 lines.append(f"\n**Impact**\n\n{impact}")
             if proof:
-                lines.append(f"\n**Preuve**\n\n{proof}")
+                lines.append(f"\n**Proof**\n\n{proof}")
             if code_snippet:
-                lines.append(f"\n**Code concerné**\n\n```php\n{code_snippet}\n```")
+                lines.append(f"\n**Code**\n\n```\n{code_snippet}\n```")
+            if root_cause:
+                lines.append(f"\n**Root Cause**\n\n{root_cause}")
             if recommendation:
-                lines.append(f"\n**Recommandation**\n\n{recommendation}")
+                lines.append(f"\n**Recommendation**\n\n{recommendation}")
             if remediation:
-                lines.append(f"\n**Correction**\n\n{remediation}")
+                lines.append(f"\n**Fix**\n\n{remediation}")
             lines.append("")
 
     return "\n".join(lines)
@@ -317,6 +362,7 @@ def analysis_callback(audit_id: uuid.UUID, request: Request, body: dict, db: Ses
         audit.vulnerabilities_high = vulns_dict.get("high", 0)
         audit.vulnerabilities_medium = vulns_dict.get("medium", 0)
         audit.vulnerabilities_low = vulns_dict.get("low", 0)
+        audit.vulnerabilities_info = vulns_dict.get("info", 0) or vulns_dict.get("informational", 0)
     else:
         metrics = body.get("metrics", {})
         if metrics.get("critical") is not None:
@@ -324,16 +370,45 @@ def analysis_callback(audit_id: uuid.UUID, request: Request, body: dict, db: Ses
             audit.vulnerabilities_high = metrics.get("high", 0)
             audit.vulnerabilities_medium = metrics.get("medium", 0)
             audit.vulnerabilities_low = metrics.get("low", 0)
+            audit.vulnerabilities_info = metrics.get("info", 0) or metrics.get("informational", 0)
         else:
             parsed = parse_vulnerabilities_from_markdown(report_markdown)
             audit.vulnerabilities_critical = parsed["critical"]
             audit.vulnerabilities_high = parsed["high"]
             audit.vulnerabilities_medium = parsed["medium"]
             audit.vulnerabilities_low = parsed["low"]
+            audit.vulnerabilities_info = parsed["info"]
 
     docker_success = body.get("docker_success")
     if docker_success is not None:
         audit.docker_status = DockerStatus.SUCCESS if docker_success else DockerStatus.FAILED
+
+    docker_validation = body.get("docker_validation")
+    if isinstance(docker_validation, list) and docker_validation:
+        validated = sum(1 for v in docker_validation if v.get("result") == "VALIDATED")
+        failed = sum(1 for v in docker_validation if v.get("result") == "FAILED")
+        not_tested = sum(1 for v in docker_validation if v.get("result") == "NOT-TESTED")
+        if audit.docker_status == DockerStatus.NOT_STARTED and validated > 0:
+            audit.docker_status = DockerStatus.SUCCESS
+
+    # Store artifacts (PoCs, exploit tests)
+    artifacts = body.get("artifacts")
+    if isinstance(artifacts, dict):
+        artifact_base = os.path.join(ARTIFACTS_DIR, str(audit.id))
+        for rel_path, content in artifacts.items():
+            target = os.path.join(artifact_base, rel_path)
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, "w", encoding="utf-8") as f:
+                f.write(content)
+        # Rewrite markdown links to use artifact endpoint
+        if audit.report_markdown:
+            base_url = f"/api/audits/{audit.id}/artifacts/"
+            md = audit.report_markdown
+            import re
+            md = re.sub(r'(\[PoC\]\()poc/', r'\1' + base_url + 'poc/', md)
+            md = re.sub(r'(\[Test\]\()exploit_tests/', r'\1' + base_url + 'exploit_tests/', md)
+            md = re.sub(r'(\[Exploit Test\]\()exploit_tests/', r'\1' + base_url + 'exploit_tests/', md)
+            audit.report_markdown = md
 
     db.commit()
     return {"status": "completed"}

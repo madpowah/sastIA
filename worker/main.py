@@ -20,6 +20,8 @@ WORK_DIR.mkdir(parents=True, exist_ok=True)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 AGENTS_SRC = PROJECT_ROOT / ".opencode" / "agents"
 AGENTS_DST = Path(os.path.expanduser("~/.config/opencode/agents"))
+SKILLS_SRC = PROJECT_ROOT / ".opencode" / "skills"
+SKILLS_DST = Path(os.path.expanduser("~/.config/opencode/skills"))
 
 
 def _sync_agents():
@@ -32,7 +34,24 @@ def _sync_agents():
             dst.write_text(f.read_text())
 
 
+def _sync_skills():
+    if not SKILLS_SRC.exists():
+        return
+    for src_dir in SKILLS_SRC.iterdir():
+        if src_dir.is_dir():
+            dst_dir = SKILLS_DST / src_dir.name
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            for f in src_dir.rglob("*"):
+                if f.is_file():
+                    rel = f.relative_to(src_dir)
+                    dst = dst_dir / rel
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    if not dst.exists() or dst.stat().st_mtime < f.stat().st_mtime:
+                        dst.write_text(f.read_text())
+
+
 _sync_agents()
+_sync_skills()
 
 app = FastAPI(title="SAST IA Worker", version="1.0.0")
 
@@ -128,6 +147,10 @@ async def run_analysis(job: AnalyzeRequest):
         code_dir = await fetch_code(job, audit_dir / "code")
         print(f"[worker] Code fetched to {code_dir}")
 
+        vulnhunt_dir = Path(str(code_dir)) / "vulnhunt_results"
+        vulnhunt_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[worker] VULNHUNT_DIR created at {vulnhunt_dir}")
+
         await run_manager_agent(
             code_dir=str(code_dir),
             audit_id=job.audit_id,
@@ -138,6 +161,7 @@ async def run_analysis(job: AnalyzeRequest):
             docker_analysis=job.docker_analysis,
             callback_secret=job.callback_secret,
         )
+<<<<<<< HEAD
         print(f"[worker] Agent analysis complete for audit {job.audit_id}")
 
         # ── Post-agent: merge raw results with agent report and callback ──
@@ -150,6 +174,41 @@ async def run_analysis(job: AnalyzeRequest):
         await _callback_with_secret(job.callback_url, job.callback_secret, payload)
         print(f"[worker] Callback completed for audit {job.audit_id}")
 
+=======
+        print(f"[worker] Analysis complete for audit {job.audit_id}")
+
+        # Worker handles callback (agent may not include secret properly)
+        report_json = vulnhunt_dir / "report.json"
+        report_readme = vulnhunt_dir / "README.md"
+        payload = {"report_markdown": ""}
+        if report_json.exists():
+            raw = report_json.read_text()
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                payload["report_markdown"] = raw
+        if not payload.get("report_markdown") and report_readme.exists():
+            payload["report_markdown"] = report_readme.read_text()
+
+        # Collect PoC and exploit test artifacts for the callback
+        artifacts = {}
+        poc_dir = vulnhunt_dir / "poc"
+        test_dir = vulnhunt_dir / "exploit_tests"
+        if poc_dir.exists():
+            for f in poc_dir.iterdir():
+                if f.is_file():
+                    artifacts[f"poc/{f.name}"] = f.read_text(encoding="utf-8", errors="replace")
+        if test_dir.exists():
+            for f in test_dir.iterdir():
+                if f.is_file():
+                    artifacts[f"exploit_tests/{f.name}"] = f.read_text(encoding="utf-8", errors="replace")
+        if artifacts:
+            payload["artifacts"] = artifacts
+            print(f"[worker] Collected {len(artifacts)} artifacts")
+
+        await _callback_with_secret(job.callback_url, job.callback_secret, payload)
+        print(f"[worker] Callback sent to {job.callback_url}")
+>>>>>>> fa71c93 (v0.2: VulnHunter pipeline + real Docker validation)
         _write_meta(job.audit_id, status="completed", finished_at=datetime.now(timezone.utc).isoformat())
 
     except Exception as e:

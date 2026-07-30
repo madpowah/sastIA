@@ -32,8 +32,11 @@ router = APIRouter(prefix="/api/admin", tags=["Admin"])
 def _audit_to_admin(audit: Audit) -> AdminAuditResponse:
     dur = None
     if audit.created_at and audit.completed_at:
-        delta = audit.completed_at - audit.created_at
-        dur = int(delta.total_seconds())
+        try:
+            delta = audit.completed_at - audit.created_at
+            dur = int(delta.total_seconds())
+        except TypeError:
+            dur = None
     return AdminAuditResponse(
         id=audit.id,
         user_id=audit.user_id,

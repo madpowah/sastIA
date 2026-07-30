@@ -8,7 +8,9 @@ from app.database import get_db
 from app.models import User, Audit, AuditStatus
 from app.schemas import ReportResponse
 from app.auth import get_current_user
-from app.services.report import generate_pdf
+from app.services.report import generate_pdf, create_report_zip
+from app.config import get_settings
+from app.routers.audits import ARTIFACTS_DIR
 
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
@@ -52,3 +54,19 @@ def download_pdf(audit_id: uuid.UUID, current_user: User = Depends(get_current_u
     finally:
         if os.path.exists(pdf_path):
             os.remove(pdf_path)
+
+
+@router.get("/{audit_id}/zip")
+def download_report_zip(audit_id: uuid.UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    audit = db.query(Audit).filter(Audit.id == str(audit_id), Audit.user_id == current_user.id).first()
+    if not audit:
+        raise HTTPException(status_code=404, detail="Audit not found")
+
+    artifact_dir = os.path.join(ARTIFACTS_DIR, str(audit.id))
+    zip_data = create_report_zip(str(audit.id), artifact_dir, audit.report_markdown)
+
+    return Response(
+        content=zip_data,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="rapport-complet-{audit.name}.zip"'.replace(" ", "-").lower()},
+    )

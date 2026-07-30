@@ -58,6 +58,12 @@ export default function AuditDetail() {
     completed: { label: t('audit.status.completed'), color: 'text-green-700', bg: 'bg-green-50 border-green-200', icon: CheckCircle },
     failed: { label: t('audit.status.failed'), color: 'text-red-700', bg: 'bg-red-50 border-red-200', icon: XCircle },
   }
+  const phaseSteps = [
+    { key: 'phase1', label: t('audit.detail.phase1') || 'Phase 1: Recon' },
+    { key: 'phase2', label: t('audit.detail.phase2') || 'Phase 2: Hunt' },
+    { key: 'phase2b', label: t('audit.detail.phase2b') || 'Phase 2b: Verify' },
+    { key: 'phase3', label: t('audit.detail.phase3') || 'Phase 3: Report' },
+  ]
   const startingRef = useRef(false)
   const [audit, setAudit] = useState<Audit | null>(null)
   const [loading, setLoading] = useState(true)
@@ -157,24 +163,22 @@ export default function AuditDetail() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Type d'analyse</h2>
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${audit.docker_analysis_enabled ? 'bg-purple-50' : 'bg-blue-50'}`}>
-                {audit.docker_analysis_enabled ? (
-                  <Server className="w-6 h-6 text-purple-600" />
-                ) : (
-                  <Cpu className="w-6 h-6 text-blue-600" />
-                )}
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('audit.detail.methodology')}</h2>
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-xl bg-blue-50">
+                <Shield className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="font-medium text-gray-900">
-                  {audit.docker_analysis_enabled ? 'Analyse complète + Docker' : 'Analyse de code uniquement'}
+                <p className="text-sm text-gray-600">
+                  {t('audit.detail.vulnhunt')}
                 </p>
-                {audit.docker_analysis_enabled && (
-                  <p className={`text-sm mt-1 ${dockerStatusConfig(t)[audit.docker_status]?.color || 'text-gray-500'}`}>
-                    Docker : {dockerStatusConfig(t)[audit.docker_status]?.label || audit.docker_status}
-                  </p>
-                )}
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {phaseSteps.map((step, i) => (
+                    <span key={step.key} className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">
+                      {i + 1}. {step.label}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -186,22 +190,26 @@ export default function AuditDetail() {
                 <span className="text-3xl font-bold text-gray-900">{audit.total_vulnerabilities}</span>
                 <span className="text-gray-500">totales</span>
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-5 gap-3">
                 <div className="text-center p-2 bg-red-50 rounded-lg">
                   <p className="text-lg font-bold text-red-700">{audit.vulnerabilities_critical}</p>
                   <p className="text-xs text-red-600">Crit.</p>
                 </div>
                 <div className="text-center p-2 bg-orange-50 rounded-lg">
                   <p className="text-lg font-bold text-orange-700">{audit.vulnerabilities_high}</p>
-                  <p className="text-xs text-orange-600">Haut</p>
+                  <p className="text-xs text-orange-600">High</p>
                 </div>
                 <div className="text-center p-2 bg-yellow-50 rounded-lg">
                   <p className="text-lg font-bold text-yellow-700">{audit.vulnerabilities_medium}</p>
-                  <p className="text-xs text-yellow-600">Moy.</p>
+                  <p className="text-xs text-yellow-600">Med.</p>
                 </div>
                 <div className="text-center p-2 bg-blue-50 rounded-lg">
                   <p className="text-lg font-bold text-blue-700">{audit.vulnerabilities_low}</p>
-                  <p className="text-xs text-blue-600">Basse</p>
+                  <p className="text-xs text-blue-600">Low</p>
+                </div>
+                <div className="text-center p-2 bg-gray-50 rounded-lg">
+                  <p className="text-lg font-bold text-gray-700">{audit.vulnerabilities_info || 0}</p>
+                  <p className="text-xs text-gray-600">Info</p>
                 </div>
               </div>
             </div>
@@ -247,12 +255,18 @@ export default function AuditDetail() {
           </div>
         )}
 
-        {isStillPending && (
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 text-center">
-            <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('audit.readyToLaunch')}</h2>
+        {(isStillPending || hasError) && (
+          <div className={`border rounded-2xl p-8 text-center ${hasError ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
+            {hasError ? (
+              <XCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+            ) : (
+              <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            )}
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              {hasError ? 'Analyse échouée' : t('audit.readyToLaunch')}
+            </h2>
             <p className="text-gray-500 mb-6">
-              {t('audit.detail.startHint')}
+              {hasError ? 'Cliquez pour relancer l\'analyse' : t('audit.detail.startHint')}
             </p>
             <Button
               onClick={startAnalysis}
@@ -260,7 +274,7 @@ export default function AuditDetail() {
               icon={<Play className="w-4 h-4" />}
               size="lg"
             >
-              {t('audit.detail.startAnalysis')}
+              {hasError ? 'Relancer' : t('audit.detail.startAnalysis')}
             </Button>
           </div>
         )}

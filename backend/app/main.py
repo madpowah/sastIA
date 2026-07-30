@@ -33,11 +33,26 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if request.method in ("POST", "PUT", "DELETE", "PATCH"):
             origin = request.headers.get("origin", "")
             referer = request.headers.get("referer", "")
-            if origin and origin not in valid_origins:
-                return JSONResponse(
-                    status_code=403,
-                    content={"detail": "Origin not allowed"},
-                )
+            allowed = False
+            if origin:
+                if origin in valid_origins:
+                    allowed = True
+                else:
+                    import re
+                    for o in valid_origins:
+                        if origin == o or (origin.startswith(o.rstrip("/") + "/")):
+                            allowed = True
+                            break
+                    if not allowed:
+                        for private_pattern in [r"^http://172\.\d+\.\d+\.\d+:\d+$", r"^http://192\.168\.\d+\.\d+:\d+$", r"^http://10\.\d+\.\d+\.\d+:\d+$"]:
+                            if re.match(private_pattern, origin):
+                                allowed = True
+                                break
+                if not allowed:
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "Origin not allowed"},
+                    )
             if referer and not any(
                 referer.startswith(o) for o in valid_origins
             ):
@@ -63,7 +78,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SAST IA - Security Audit Platform",
     description="Plateforme d'audit de sécurité automatisé",
-    version="1.0.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -88,4 +103,4 @@ app.include_router(admin.router)
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": "0.2.0"}
