@@ -45,42 +45,42 @@
 ./start.sh
 ```
 
-Ouvre `http://localhost:5173` et connecte-toi avec :
-- **Email** : `admin@sastia.com`
-- **Mot de passe** : `admin123`
+Open `http://localhost:5173` and login with:
+- **Email**: `admin@sastia.com`
+- **Password**: `admin123`
 
 ---
 
 ## What's new in v0.2
 
-**VulnHunter pipeline** — L'ancien pipeline OWASP a été remplacé par la méthodologie [VulnHunter](https://github.com/capitalone/VulnHunter) : inventaire systématique des entrées, traçage entrée→sink, vérification adversariale, sweep codebase.
+**VulnHunter pipeline** — The legacy OWASP checklist has been replaced by the [VulnHunter](https://github.com/capitalone/VulnHunter) methodology: systematic input inventory, input-to-sink tracing, adversarial verification, codebase-wide sweep.
 
-**Validation Docker réelle** — Le Docker ne se contente plus d'exécuter les scripts PoC de l'IA. Pour chaque type d'app :
-- **Web app** : `curl` avec payloads réelles
-- **Lib C** : compilation avec `-fsanitize=address`, exécution du vrai code
-- **CLI** : lancement avec arguments malveillants
+**Real Docker validation** — Docker no longer runs the AI's own PoC scripts. Instead, for each app type:
+- **Web app**: `curl` with real payloads against the live container
+- **C library**: compile with `-fsanitize=address`, run actual exploit code
+- **CLI tool**: execute binary with malicious arguments
 
-**Rapport VULN-NNN** — Findings numérotés avec CWE, table de synthèse, inventory résolu, section code quality.
+**VULN-NNN report** — One finding per sink location, CWE identifiers, summary table, resolved input inventory, code quality section.
 
-**Téléchargement ZIP** — Rapport complet + PoCs + exploit tests dans une archive.
+**ZIP download** — Full report + PoCs + exploit tests in a single archive.
 
-**Popup modale** — Visualisation des PoC/tests avec toggle raw/rendu MD.
+**Modal viewer** — In-page PoC/exploit display with raw/rendered MD toggle.
 
-**Compatible tous modèles** — Plus de restriction Opus.
+**All models compatible** — No Opus restriction.
 
 ---
 
 ## Configuration — `backend/.env`
 
-| Variable | Défaut | Description |
+| Variable | Default | Description |
 |---|---|---|
-| `SECRET_KEY` | (aléatoire à l'install) | Clé JWT |
-| `DATABASE_URL` | `sqlite:///./sastia.db` | SQLite ou PostgreSQL |
-| `CORS_ORIGINS` | `http://localhost:3000,...` | URLs autorisées |
-| `WORKER_URL` | `http://localhost:9000` | URL du worker |
-| `CODE_DOWNLOAD_BASE_URL` | `http://localhost:8000` | URL publique du backend |
+| `SECRET_KEY` | (random at install) | JWT secret key |
+| `DATABASE_URL` | `sqlite:///./sastia.db` | SQLite or PostgreSQL |
+| `CORS_ORIGINS` | `http://localhost:3000,...` | Allowed origins |
+| `WORKER_URL` | `http://localhost:9000` | Worker URL |
+| `CODE_DOWNLOAD_BASE_URL` | `http://localhost:8000` | Public backend URL for callbacks |
 
-Les IP privées Docker (`172.x`, `192.168.x`, `10.x`) sont automatiquement acceptées.
+Private Docker IPs (`172.x`, `192.168.x`, `10.x`) are automatically allowed by CORS middleware.
 
 ---
 
@@ -88,8 +88,8 @@ Les IP privées Docker (`172.x`, `192.168.x`, `10.x`) sont automatiquement accep
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/reports/{id}/zip` | ZIP complet (README + PoCs + tests) |
-| `GET` | `/api/audits/{id}/artifacts/{path}` | Fichiers PoC / exploit tests |
+| `GET` | `/api/reports/{id}/zip` | Download full report ZIP (README + PoCs + tests) |
+| `GET` | `/api/audits/{id}/artifacts/{path}` | Serve PoC / exploit test files |
 
 ---
 
@@ -98,26 +98,26 @@ Les IP privées Docker (`172.x`, `192.168.x`, `10.x`) sont automatiquement accep
 ```
 sastIA/
 ├── .opencode/
-│   ├── agents/                    # Subagents SAST
-│   │   ├── sastia_manager.md      # Orchestrateur VulnHunter
-│   │   ├── sastia_analyzer.md     # Phases 1-3 + validation Docker
-│   │   ├── sastia_rapport.md      # Rapport VULN-NNN
-│   │   └── sastia_docker.md       # Build & cleanup Docker
+│   ├── agents/                    # SAST subagents
+│   │   ├── sastia_manager.md      # VulnHunter orchestrator
+│   │   ├── sastia_analyzer.md     # Phases 1-3 + Docker validation
+│   │   ├── sastia_rapport.md      # VULN-NNN report
+│   │   └── sastia_docker.md       # Docker build & cleanup
 │   └── skills/vulnhunt/
-│       ├── SKILL.md               # Adapté (static-only, tous modèles)
-│       └── phases/                # 11 fichiers de phase VulnHunter
+│       ├── SKILL.md               # Adapted (static-only, all models)
+│       └── phases/                # 11 VulnHunter phase files
 ├── backend/
 │   ├── app/routers/
 │   │   ├── audits.py              # + artifacts endpoint
 │   │   └── reports.py             # + ZIP download
 │   └── app/services/
-│       └── report.py              # PDF simplify + ZIP
+│       └── report.py              # PDF simplify + ZIP creation
 ├── frontend/
 │   └── src/pages/
 │       └── Report.tsx             # Modal viewer, ZIP, MD toggle
 └── worker/
     ├── main.py                    # + skills sync, artifact collect
-    └── opencode_runner.py         # Prompt VulnHunter, callback worker
+    └── opencode_runner.py         # VulnHunter prompt, worker callback
 ```
 
 ---
@@ -126,13 +126,13 @@ sastIA/
 
 | Feature | Description |
 |---|---|
-| **VulnHunter pipeline** | 4 phases : Recon → Hunt → Verify → Report |
-| **Vérification adversariale** | Tentative systématique de réfutation |
-| **Validation Docker réelle** | curl / ASAN / exec — pas d'auto-validation |
-| **Format VULN-NNN** | Un finding par sink, avec CWE |
-| **ZIP complet** | README + PoCs + exploit tests |
-| **Popup modale** | Visualisation avec toggle raw/rendu MD |
-| **Tous modèles** | Compatible Opus, DeepSeek, Gemini, etc. |
+| **VulnHunter pipeline** | 4 phases: Recon → Hunt → Verify → Report |
+| **Adversarial verification** | Systematic attempt to refute each finding |
+| **Real Docker validation** | curl / ASAN / exec — not self-validation |
+| **VULN-NNN format** | One finding per sink, with CWE |
+| **ZIP download** | README + PoCs + exploit tests |
+| **Modal viewer** | Raw/rendered MD toggle |
+| **All models** | Works with Opus, DeepSeek, Gemini, etc. |
 
 ---
 
