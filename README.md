@@ -51,7 +51,7 @@
 ## What's new in v0.2
 
 ### VulnHunter pipeline integration
-The old SAST pipeline (OWASP Top 10 checklist) has been replaced by the **VulnHunter methodology** — a rigorous multi-phase audit adapted from [vulnhunt](https://github.com/anomalyco/vulnhunt):
+The old SAST pipeline (OWASP Top 10 checklist) has been replaced by the **VulnHunter methodology** — a rigorous multi-phase audit adapted from [vulnhunt](https://github.com/capitalone/VulnHunter):
 
 - **Phase 1 — Recon**: Complete input inventory, sink enumeration, call graph mapping, subgraph partitioning, threat model
 - **Phase 2 — Hunt**: Parallel trace agents per partition and vulnerability class (INJ/NAV/LOG), sink-driven audit
