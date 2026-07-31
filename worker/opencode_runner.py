@@ -22,7 +22,7 @@ async def run_manager_agent(
     report_language: str = "en",
     docker_analysis: bool = False,
     callback_secret: str | None = None,
-    timeout: int = 7200,
+    timeout: int = 18000,
 ) -> str:
     audit_dir = os.path.dirname(code_dir)
     worker_log = os.path.join(audit_dir, "opencode.log")
