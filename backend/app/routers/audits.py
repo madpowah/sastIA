@@ -182,6 +182,62 @@ def _dispatch_to_worker(audit: Audit, user: User, db: Session):
 
 ARTIFACTS_DIR = os.path.join(settings.UPLOAD_DIR, "artifacts")
 
+PHASE_LABELS = {
+    "recon": "Phase 1: Reconnaissance",
+    "hunt": "Phase 2: Vulnerability Hunt",
+    "verify": "Phase 2b: Adversarial Verification",
+    "reproduce": "Phase 3: Reproduce & Fix",
+    "sweep": "Phase 3d: Codebase Sweep",
+    "docker": "Docker Build & Validation",
+    "report": "Phase 4: Report Generation",
+}
+
+
+@router.get("/{audit_id}/progress")
+def get_audit_progress(audit_id: str, current_user: User = Depends(get_current_user)):
+    """Return current phase progress by parsing worker logs for ##PHASE: markers."""
+    audit = None
+    from app.database import SessionLocal
+    db = SessionLocal()
+    try:
+        audit = db.query(Audit).filter(Audit.id == audit_id, Audit.user_id == current_user.id).first()
+    finally:
+        db.close()
+
+    if not audit:
+        raise HTTPException(status_code=404, detail="Audit not found")
+
+    progress = {"phase": None, "phase_label": None, "phase_num": 0, "total_phases": 6}
+
+    try:
+        import httpx
+        r = httpx.get(f"{settings.WORKER_URL}/log/{audit_id}", timeout=5)
+        if r.status_code == 200:
+            log_text = r.text
+            import re
+            matches = re.findall(r"##PHASE:\s*(\w+)##", log_text)
+            if matches:
+                last = matches[-1].lower()
+                phases = ["recon", "hunt", "verify", "reproduce", "docker", "report"]
+                if last in phases:
+                    idx = phases.index(last)
+                    progress["phase"] = last
+                    progress["phase_label"] = PHASE_LABELS.get(last, last)
+                    progress["phase_num"] = idx + 1
+                    progress["worker_log_preview"] = log_text[-500:]
+    except Exception as e:
+        progress["error"] = str(e)
+
+    if audit.status == "completed":
+        progress["phase"] = "complete"
+        progress["phase_label"] = "Analysis Complete"
+        progress["phase_num"] = 6
+    elif audit.status == "failed":
+        progress["phase"] = "failed"
+        progress["phase_label"] = "Analysis Failed"
+
+    return progress
+
 
 @router.get("/{audit_id}/artifacts/{filepath:path}", include_in_schema=False)
 def serve_artifact(audit_id: str, filepath: str):

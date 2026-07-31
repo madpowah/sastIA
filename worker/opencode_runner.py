@@ -90,15 +90,15 @@ Compatible tous modèles. Statique par défaut. Si DOCKER_ENABLED, validation Do
 
 Suis `${{SKILL_DIR}}/SKILL.md`. Phases dans `${{PHASES_DIR}}/`.
 
-1. **Phase 1 - Recon** : Active @SastIA_analyzer : "Phase 1. VULNHUNT_DIR={code_dir}/vulnhunt_results PHASES_DIR={phases_dir}. Suis phase1_recon.md. Écris phase1_output.md"
+1. **Phase 1 - Recon** : Écris ##PHASE: Recon## puis active @SastIA_analyzer : "Phase 1. VULNHUNT_DIR={code_dir}/vulnhunt_results PHASES_DIR={phases_dir}. Suis phase1_recon.md. Écris phase1_output.md"
 
-2. **Phase 2 - Hunt** : Lis ${{PHASES_DIR}}/phase2_hunt.md. Crée les partitions. Dispatche les agents de traçage (3/partition + sink-driven). Utilise @SastIA_analyzer.
+2. **Phase 2 - Hunt** : Écris ##PHASE: Hunt## puis lis ${{PHASES_DIR}}/phase2_hunt.md. Crée les partitions. Dispatche les agents de traçage (3/partition + sink-driven). Utilise @SastIA_analyzer.
 
-3. **Phase 2b - Verify** : Active @SastIA_analyzer : "Phase 2b. Mêmes vars. Suis phase2b_verify.md. Écris phase2b_output.md"
+3. **Phase 2b - Verify** : Écris ##PHASE: Verify## puis active @SastIA_analyzer : "Phase 2b. Mêmes vars. Suis phase2b_verify.md. Écris phase2b_output.md"
 
-4. **Phase 3 - Reproduce/Fix/Sweep** : Active @SastIA_analyzer : "Phase 3. Mêmes vars. Suis phase3_reproduce_test.md, phase3c_fixes.md, phase3d_sweep.md. Écris poc/, exploit_tests/, phase3_output.md, phase3d_output.md"
+4. **Phase 3 - Reproduce/Fix/Sweep** : Écris ##PHASE: Reproduce## puis active @SastIA_analyzer : "Phase 3. Mêmes vars. Suis phase3_reproduce_test.md, phase3c_fixes.md, phase3d_sweep.md. Écris poc/, exploit_tests/, phase3_output.md, phase3d_output.md"
 {docker_validation}
-7. **Rapport** : Active @SastIA_rapport. Suis ${{PHASES_DIR}}/phase4_report.md. Inclus validation_results.md si dispo. Écris le JSON dans ${{VULNHUNT_DIR}}/report.json
+7. **Rapport** : Écris ##PHASE: Report## puis active @SastIA_rapport. Suis ${{PHASES_DIR}}/phase4_report.md. Inclus validation_results.md si dispo. Écris le JSON dans ${{VULNHUNT_DIR}}/report.json
 {docker_cleanup}
 IMPORTANT : Ne fais pas d'analyse toi-même. Dispatche TOUT."""
 

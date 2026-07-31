@@ -12,12 +12,17 @@ import {
   CheckCircle,
   XCircle,
   Download,
-  ExternalLink,
   AlertTriangle,
   RefreshCw,
   Server,
   Cpu,
   Play,
+  Search,
+  Bug,
+  ShieldCheck,
+  FileCode,
+  Box,
+  Flag,
 } from 'lucide-react'
 
 interface Audit {
@@ -67,6 +72,10 @@ export default function AuditDetail() {
   const startingRef = useRef(false)
   const [audit, setAudit] = useState<Audit | null>(null)
   const [loading, setLoading] = useState(true)
+  const [phaseNum, setPhaseNum] = useState(0)
+  const [phaseLabel, setPhaseLabel] = useState('')
+
+  const PHASE_ICONS = [Search, Bug, ShieldCheck, FileCode, Box, Flag]
 
   const fetchAudit = async () => {
     try {
@@ -79,9 +88,19 @@ export default function AuditDetail() {
     }
   }
 
+  const fetchProgress = async () => {
+    try {
+      const { data } = await api.get(`/audits/${id}/progress`)
+      if (data.phase && data.phase !== 'complete' && data.phase !== 'failed') {
+        setPhaseNum(data.phase_num || 0)
+        setPhaseLabel(data.phase_label || '')
+      }
+    } catch {}
+  }
+
   useEffect(() => {
     fetchAudit()
-    const interval = setInterval(fetchAudit, 10000)
+    const interval = setInterval(() => { fetchAudit(); fetchProgress() }, 10000)
     return () => clearInterval(interval)
   }, [id])
 
@@ -280,12 +299,36 @@ export default function AuditDetail() {
         )}
 
         {isAnalyzing && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-8 text-center">
-            <RefreshCw className="w-12 h-12 text-blue-500 mx-auto mb-4 animate-spin" />
-            <h2 className="text-xl font-semibold text-blue-900 mb-2">Analyse en cours</h2>
-            <p className="text-blue-700">
-              {t('audit.processing')}
-            </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-8">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
+              <h2 className="text-xl font-semibold text-blue-900">Analyse en cours</h2>
+            </div>
+            <div className="max-w-xl mx-auto">
+              <div className="flex justify-between mb-2">
+                {PHASE_ICONS.map((Icon, i) => {
+                  const done = i < phaseNum
+                  const current = i === phaseNum
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-500 ${
+                        done ? 'bg-green-500 text-white' :
+                        current ? 'bg-blue-600 text-white ring-2 ring-blue-300 ring-offset-2' :
+                        'bg-gray-200 text-gray-400'
+                      }`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="relative h-2 bg-gray-200 rounded-full mt-1 mb-4">
+                <div className="absolute h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${(phaseNum / 5) * 100}%` }} />
+              </div>
+              <p className="text-center text-sm font-medium text-blue-800">
+                {phaseLabel || t('audit.processing')}
+              </p>
+            </div>
           </div>
         )}
       </div>
