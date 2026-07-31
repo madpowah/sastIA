@@ -36,26 +36,11 @@ async def run_manager_agent(
         "en": "The final report MUST be written in English.",
     }.get(report_language, "The final report MUST be written in English.")
 
-<<<<<<< HEAD
-    FINAL_REPORT_PATH = os.path.join(audit_dir, "final-report.json")
-
-    docker_steps = ""
-    if docker_analysis:
-        docker_steps = f"""1. Active @SastIA_docker en lui indiquant le chemin {code_dir} pour qu'il mette en place l'environnement de test
-2. Active @SastIA_analyzer en lui fournissant le même chemin {code_dir} et les infos Docker pour l'audit de sécurité
-3. Active @SastIA_rapport pour produire le rapport final ÉCRIS-LE au chemin : {FINAL_REPORT_PATH}
-4. **NETTOYAGE OBLIGATOIRE** : Active @SastIA_docker pour supprimer le conteneur (docker stop + docker rm), l'image (docker rmi) et les fichiers temporaires. Vérifie que tout est bien supprimé avant de terminer."""
-    else:
-        docker_steps = f"""1. Passe l'étape @SastIA_docker (non requis pour cette analyse — pas de validation Docker)
-2. Active @SastIA_analyzer en lui fournissant le chemin {code_dir} pour l'audit de sécurité (sans validation Docker)
-3. Active @SastIA_rapport pour produire le rapport final et ÉCRIS-LE au chemin JSON : {FINAL_REPORT_PATH}"""
-=======
     docker_validation = ""
     docker_cleanup = ""
     if docker_analysis:
         docker_validation = f"""
 5. **Docker Build** : Active @SastIA_docker avec CODE_DIR={code_dir} pour builder l'image et lancer le conteneur. Récupère ## Docker Environment Summary.
->>>>>>> fa71c93 (v0.2: VulnHunter pipeline + real Docker validation)
 
 6. **Docker Validation** : Active @SastIA_analyzer avec :
    "Validation Docker. VULNHUNT_DIR={code_dir}/vulnhunt_results DOCKER_URL=<url> DOCKER_CONTAINER=<name>

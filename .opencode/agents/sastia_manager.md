@@ -37,35 +37,26 @@ Si DOCKER_ENABLED, les PoCs sont exécutés contre le conteneur pour validation.
 3. **Phase 2b - Verify** : Active @SastIA_analyzer avec phase2b_verify.md
 4. **Phase 3 - Reproduce/Fix/Sweep** : Active @SastIA_analyzer avec phase3_reproduce_test.md + phase3c_fixes.md + phase3d_sweep.md
 
-<<<<<<< HEAD
-3. Active @SastIA_rapport pour produire le rapport final et l'écrire dans le fichier JSON au chemin indiqué
-4. **NETTOYAGE OBLIGATOIRE** : Active @SastIA_docker pour supprimer le conteneur, l'image Docker et les fichiers temporaires créés pendant l'audit
-5. Vérifie que @SastIA_docker a bien tout supprimé avant de terminer 
-
-### Rappel des contraintes
-- Ne fais pas d'analyse toi-même — délègue TOUT aux agents spécialisés
-- Transmets toujours les infos Docker (conteneur, ports) à @SastIA_analyzer
-- Le rapport final DOIT être écrit dans un fichier JSON au chemin indiqué par le prompt
-- Ne fais PAS de requête HTTP ni curl — le callback est géré automatiquement
-
-## Output
-- Le rapport JSON final est écrit dans le fichier au chemin indiqué par le prompt d'appel
-=======
 5. **Docker Validate (si DOCKER_ENABLED)** :
    a. Active @SastIA_docker pour builder l'image et lancer le conteneur
    b. Récupère les infos Docker (ports, URL) depuis ## Docker Environment Summary
    c. Active @SastIA_analyzer pour exécuter les exploits PoC contre le conteneur :
       "Validation Docker. VULNHUNT_DIR={VULNHUNT_DIR} DOCKER_URL={url} DOCKER_CONTAINER={name}
-       Lis les fichiers dans poc/ et exploit_tests/. Pour chaque VULN-NNN, exécute
-       l'exploit contre le conteneur Docker. Marque : VALIDATED / FAILED / NOT-TESTED.
+       Lis les fichiers dans poc/ et exploit_tests/. Pour chaque VULN-NNN, conçois et
+       exécute une VRAIE attaque (curl/ASAN/exec) contre le conteneur Docker.
+       Marque : VALIDATED / FAILED / NOT-TESTED.
        Écris les résultats dans {VULNHUNT_DIR}/validation_results.md"
 
 6. **Rapport** : Active @SastIA_rapport. Suis phase4_report.md. Inclus les résultats de validation Docker si disponibles.
 
-7. **Callback** : POST le JSON à l'URL de callback
+7. **Callback** : le worker envoie le callback automatiquement — ne fais PAS de requête HTTP
 
 8. **Cleanup** : Si Docker a été utilisé, supprime conteneur + image via @SastIA_docker
 
+## Rappel des contraintes
+- Ne fais pas d'analyse toi-même — délègue TOUT aux agents spécialisés
+- Transmets toujours les infos Docker (conteneur, ports) à @SastIA_analyzer
+- Ne fais PAS de requête HTTP ni curl — le callback est géré automatiquement par le worker
+
 ## Output
-- Rapport final envoyé à l'URL de callback
->>>>>>> fa71c93 (v0.2: VulnHunter pipeline + real Docker validation)
+- Rapport final envoyé à l'URL de callback par le worker
