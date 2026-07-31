@@ -461,9 +461,9 @@ def analysis_callback(audit_id: uuid.UUID, request: Request, body: dict, db: Ses
             base_url = f"/api/audits/{audit.id}/artifacts/"
             md = audit.report_markdown
             import re
-            md = re.sub(r'(\[PoC\]\()poc/', r'\1' + base_url + 'poc/', md)
-            md = re.sub(r'(\[Test\]\()exploit_tests/', r'\1' + base_url + 'exploit_tests/', md)
-            md = re.sub(r'(\[Exploit Test\]\()exploit_tests/', r'\1' + base_url + 'exploit_tests/', md)
+            # Catch ALL relative artifact links regardless of link text
+            # (agent produces [PASS](exploit_tests/...), [`poc/x.md`](poc/...), etc.)
+            md = re.sub(r'\]\(((?:poc|exploit_tests)/)', r'](' + base_url + r'\1', md)
             audit.report_markdown = md
 
     db.commit()

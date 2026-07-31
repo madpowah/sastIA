@@ -120,7 +120,7 @@ def merge_reports(
             agent_data = json.loads(agent_report_path.read_text())
             summary = agent_data.get("summary", "")
             # If agent provided its own vulns, use them (they may have better descriptions)
-            agent_vulns = agent_data.get("vulnerabilities", [])
+            agent_vulns = agent_data.get("vulnerabilities") or agent_data.get("findings", [])
             if isinstance(agent_vulns, list) and len(agent_vulns) > 0:
                 # Merge: use agent vulns but ensure all raw findings are also included
                 raw_ids = {(v.get("file_path", ""), v.get("line", 0)) for v in raw_vulns}

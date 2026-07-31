@@ -40,10 +40,10 @@ export default function NewAudit() {
   const currentModels = selectedProvider ? availableModels.filter((m) => m.provider === selectedProvider) : []
 
   useEffect(() => {
-    api.get('/admin/public/models').then(({ data }) => {
+    api.get<{ id: string; name: string; provider: string }[]>('/admin/public/models').then(({ data }) => {
       setAvailableModels(data)
       if (data.length > 0) {
-        const provs = [...new Set(data.map((m: any) => m.provider))]
+        const provs = [...new Set(data.map((m) => m.provider))]
         setSelectedProvider(provs[0])
       }
     }).catch(() => {})

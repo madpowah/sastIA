@@ -53,10 +53,17 @@ export default function Report() {
       const target = (e.target as HTMLElement).closest('a')
       if (!target) return
       const href = target.getAttribute('href')
-      if (!href || !href.startsWith('/api/audits/')) return
+      if (!href) return
+      let apiPath: string | null = null
+      if (href.startsWith('/api/audits/')) {
+        apiPath = href.replace(/^\/api/, '')
+      } else if (href.startsWith('poc/') || href.startsWith('exploit_tests/')) {
+        // Relative artifact link (legacy reports before link rewriting)
+        apiPath = `/audits/${id}/artifacts/${href}`
+      }
+      if (!apiPath) return
       e.preventDefault()
       e.stopPropagation()
-      const apiPath = href.replace(/^\/api/, '')
       const parts = decodeURIComponent(apiPath).split('/')
       const filename = parts[parts.length - 1]
       setModalTitle(filename)
