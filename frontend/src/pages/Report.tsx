@@ -56,10 +56,13 @@ export default function Report() {
       if (!href) return
       let apiPath: string | null = null
       if (href.startsWith('/api/audits/')) {
-        apiPath = href.replace(/^\/api/, '')
-      } else if (href.startsWith('poc/') || href.startsWith('exploit_tests/')) {
+        // Strip any #anchor — the modal shows the file top.
+        apiPath = href.replace(/^\/api/, '').split('#')[0]
+      } else if (/^(poc|exploit_tests|README|report|phase\d|phase\d[a-z]|validation_results|docker_environment)(\/|\.|#)/.test(href)) {
         // Relative artifact link (legacy reports before link rewriting)
-        apiPath = `/audits/${id}/artifacts/${href}`
+        // Strip any #anchor (scroll target inside the artifact) — the modal shows the file top.
+        const base = href.split('#')[0]
+        apiPath = `/audits/${id}/artifacts/${base}`
       }
       if (!apiPath) return
       e.preventDefault()

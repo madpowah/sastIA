@@ -461,9 +461,15 @@ def analysis_callback(audit_id: uuid.UUID, request: Request, body: dict, db: Ses
             base_url = f"/api/audits/{audit.id}/artifacts/"
             md = audit.report_markdown
             import re
-            # Catch ALL relative artifact links regardless of link text
-            # (agent produces [PASS](exploit_tests/...), [`poc/x.md`](poc/...), etc.)
-            md = re.sub(r'\]\(((?:poc|exploit_tests)/)', r'](' + base_url + r'\1', md)
+            # Catch ALL relative artifact links (poc/, exploit_tests/, phase outputs,
+            # report.md, report.json, README.md, validation_results.md, ...)
+            # but leave absolute URLs, protocol-relative and in-page anchors untouched.
+            # Handles both [text](path) and [text](path#anchor) forms.
+            md = re.sub(
+                r'\]\(((?:poc|exploit_tests|README|report|phase\d|phase\d[a-z]|validation_results|docker_environment)[^)#\s]*(?:#[^)\s]*)?)',
+                lambda m: '](' + base_url + m.group(1),
+                md,
+            )
             audit.report_markdown = md
 
     db.commit()

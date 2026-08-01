@@ -175,18 +175,17 @@ async def run_analysis(job: AnalyzeRequest):
         if not payload.get("report_markdown") and report_readme.exists():
             payload["report_markdown"] = report_readme.read_text()
 
-        # Collect PoC and exploit test artifacts for the callback
+        # Collect ALL vulnhunt artifacts for the callback (PoCs, exploit tests,
+        # phase outputs, report.md, report.json, validation_results.md, ...)
         artifacts = {}
-        poc_dir = vulnhunt_dir / "poc"
-        test_dir = vulnhunt_dir / "exploit_tests"
-        if poc_dir.exists():
-            for f in poc_dir.iterdir():
+        if vulnhunt_dir.exists():
+            for f in vulnhunt_dir.rglob("*"):
                 if f.is_file():
-                    artifacts[f"poc/{f.name}"] = f.read_text(encoding="utf-8", errors="replace")
-        if test_dir.exists():
-            for f in test_dir.iterdir():
-                if f.is_file():
-                    artifacts[f"exploit_tests/{f.name}"] = f.read_text(encoding="utf-8", errors="replace")
+                    try:
+                        rel = f.relative_to(vulnhunt_dir).as_posix()
+                        artifacts[rel] = f.read_text(encoding="utf-8", errors="replace")
+                    except (OSError, UnicodeDecodeError):
+                        continue
         if artifacts:
             payload["artifacts"] = artifacts
             print(f"[worker] Collected {len(artifacts)} artifacts")
