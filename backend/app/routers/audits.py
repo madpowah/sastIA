@@ -400,23 +400,21 @@ def analysis_callback(audit_id: uuid.UUID, request: Request, body: dict, db: Ses
     if not report_markdown:
         # Fallback 1: the agent's written report may be shipped in artifacts
         # (README.md / report.md) even when report_markdown wasn't set.
+        # Never select by filename: some runs ship BOTH a short README.md index
+        # and the full report.md, so the largest candidate is the real report.
         artifacts_body = body.get("artifacts")
         if isinstance(artifacts_body, dict):
-            for cand in ("README.md", "report.md"):
-                if artifacts_body.get(cand):
-                    report_markdown = artifacts_body[cand]
-                    print(f"[backend] recovered report markdown from artifacts/{cand}")
-                    break
-            if not report_markdown:
-                md_candidates = [
-                    (k, v) for k, v in artifacts_body.items()
-                    if k.endswith(".md") and "/" not in k
-                    and not k.startswith("phase") and k != "validation_results.md"
-                    and ("VulnHunter Security Audit Report" in v[:2000] or "## Summary" in v[:2000])
-                ]
-                if md_candidates:
-                    report_markdown = max(md_candidates, key=lambda kv: len(kv[1]))[1]
-                    print(f"[backend] recovered report markdown from artifacts/{max(md_candidates, key=lambda kv: len(kv[1]))[0]}")
+            md_candidates = [
+                (k, v) for k, v in artifacts_body.items()
+                if k.endswith(".md") and "/" not in k
+                and not k.startswith("phase")
+                and k not in ("validation_results.md", "docker_environment.md")
+                and isinstance(v, str)
+                and ("VulnHunter Security Audit Report" in v[:2000] or "## Summary" in v[:2000])
+            ]
+            if md_candidates:
+                name, report_markdown = max(md_candidates, key=lambda kv: len(kv[1]))
+                print(f"[backend] recovered report markdown from artifacts/{name} ({len(report_markdown)} chars)")
 
     if not report_markdown:
         vulns = body.get("vulnerabilities", [])

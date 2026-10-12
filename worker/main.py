@@ -138,24 +138,25 @@ def _pick_report_markdown(vulnhunt_dir: Path) -> str | None:
     """Return the agent's human-readable report markdown.
 
     The report agent is *told* to write `README.md`, but models drift: some
-    runs emit `report.md` instead (or another top-level .md). Accept a list of
-    known names first, then fall back to the largest top-level markdown file
-    that looks like a VulnHunter report, so a naming drift never downgrades the
-    callback to the backend's generic markdown rebuild.
+    runs emit `report.md` (or another top-level .md), and some emit BOTH a
+    short `README.md` index and the full `report.md`. Selecting by name is
+    therefore wrong — the thin index would win over the complete report
+    (observed: 6 KB README.md chosen over an 88 KB report.md).
+
+    Instead collect every top-level markdown file that looks like a VulnHunter
+    report and keep the LARGEST one, which is the full report in both the
+    "index + report" and "report only" layouts.
     """
     if not vulnhunt_dir.exists():
         return None
 
-    for name in ("README.md", "report.md"):
-        p = vulnhunt_dir / name
-        if p.is_file() and p.stat().st_size > 0:
-            print(f"[worker] report markdown source: {name}")
-            return p.read_text(encoding="utf-8", errors="replace")
-
-    # Fallback: any top-level markdown that looks like the VulnHunter report.
-    candidates = []
+    candidates: list[Path] = []
     for p in vulnhunt_dir.glob("*.md"):
-        if not p.is_file() or p.name.startswith("phase") or p.name == "validation_results.md":
+        if not p.is_file() or p.name.startswith("phase"):
+            continue
+        if p.name in ("validation_results.md", "docker_environment.md"):
+            continue
+        if p.stat().st_size == 0:
             continue
         try:
             head = p.read_text(encoding="utf-8", errors="replace")[:2000]
@@ -163,11 +164,16 @@ def _pick_report_markdown(vulnhunt_dir: Path) -> str | None:
             continue
         if "VulnHunter Security Audit Report" in head or "## Summary" in head:
             candidates.append(p)
-    if candidates:
-        best = max(candidates, key=lambda p: p.stat().st_size)
-        print(f"[worker] report markdown source (fallback): {best.name}")
-        return best.read_text(encoding="utf-8", errors="replace")
-    return None
+
+    if not candidates:
+        return None
+
+    best = max(candidates, key=lambda p: p.stat().st_size)
+    print(
+        f"[worker] report markdown source: {best.name} "
+        f"({best.stat().st_size} bytes, {len(candidates)} candidate(s))"
+    )
+    return best.read_text(encoding="utf-8", errors="replace")
 
 
 async def run_analysis(job: AnalyzeRequest):
@@ -200,7 +206,7 @@ async def run_analysis(job: AnalyzeRequest):
 
         # Worker handles callback (agent may not include secret properly)
         report_json = vulnhunt_dir / "report.json"
-        payload = {"report_markdown": ""}
+        payload: dict[str, object] = {"report_markdown": ""}
         if report_json.exists():
             raw = report_json.read_text()
             try:
@@ -209,6 +215,25 @@ async def run_analysis(job: AnalyzeRequest):
                 payload["report_markdown"] = raw
         if not payload.get("report_markdown"):
             payload["report_markdown"] = _pick_report_markdown(vulnhunt_dir) or ""
+
+        # Exact severity counts: report.json already carries the agent's own
+        # tally. Without this the backend has no `vulnerabilities`/`metrics`
+        # key and falls back to regex-parsing the markdown, which over-counts
+        # (it also matches the summary-table rows and detail tables).
+        if not isinstance(payload.get("vulnerabilities"), dict):
+            summary = payload.get("summary")
+            if isinstance(summary, dict):
+                by_sev = summary.get("by_severity")
+                if isinstance(by_sev, dict) and by_sev:
+                    norm = {str(k).strip().lower(): v for k, v in by_sev.items()}
+                    payload["vulnerabilities"] = {
+                        "critical": norm.get("critical", 0),
+                        "high": norm.get("high", 0),
+                        "medium": norm.get("medium", 0),
+                        "low": norm.get("low", 0),
+                        "info": norm.get("info", norm.get("informational", 0)),
+                    }
+                    print(f"[worker] severity counts from report.json summary: {payload['vulnerabilities']}")
 
         # Collect ALL vulnhunt artifacts for the callback (PoCs, exploit tests,
         # phase outputs, report.md, report.json, validation_results.md, ...)

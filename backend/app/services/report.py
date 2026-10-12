@@ -41,12 +41,8 @@ def _simplify_for_pdf(markdown_text: str) -> str:
                     vuln_sections.append("\n".join(current_vuln))
                     current_vuln = []
                 continue
-            if line.startswith("| **"):
-                # Skip detail table rows in PDF, we'll format them nicely
-                continue
-            # Skip the raw table field rows
-            if line.startswith("|") and "**" in line:
-                continue
+            # Keep the whole section, including the `| **Field** | Value |`
+            # detail table — it is reformatted as a bullet list below.
             current_vuln.append(line)
             continue
 
@@ -104,10 +100,31 @@ def _simplify_for_pdf(markdown_text: str) -> str:
         for vs in vuln_sections:
             vlines = vs.split("\n")
             title = vlines[0] if vlines else ""
-            body = [l for l in vlines[1:] if l.strip() and not l.startswith("|") and "**PoC**" not in l and "**Exploit Test**" not in l]
             out.append(title)
-            for b in body:
-                out.append(b)
+            out.append("")
+            for raw in vlines[1:]:
+                line = raw.strip()
+                if not line:
+                    continue
+                # Table separator (|---|---|) — carries no content
+                if re.fullmatch(r"\|[\s\-:|]+\|", line):
+                    continue
+                if line.startswith("|"):
+                    # `| **Field** | Value |` -> `- **Field**: Value`
+                    # Protect escaped pipes (e.g. `A \| B`) before splitting.
+                    cells = [
+                        c.strip().replace("\x00", "|")
+                        for c in line.replace("\\|", "\x00").strip("|").split("|")
+                    ]
+                    if len(cells) == 2 and cells[0] and cells[1]:
+                        # Skip the table's own header row (`| Field | Value |`)
+                        if cells[0].lower() == "field" and cells[1].lower() == "value":
+                            continue
+                        out.append(f"- {cells[0]}: {cells[1]}")
+                    else:
+                        out.append(" ".join(c for c in cells if c))
+                    continue
+                out.append(line)
             out.append("")
 
     return "\n".join(out)
