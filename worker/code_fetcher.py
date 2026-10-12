@@ -36,6 +36,33 @@ def _is_safe_repo_url(url: str) -> bool:
     return bool(REPO_URL_PATTERN.match(url))
 
 
+# GitHub/GitLab "browse this branch" URLs: https://host/owner/repo/tree/<branch>
+# The branch may itself contain slashes (e.g. work/string-cache), so the
+# remainder after /tree/ is taken as a whole.
+TREE_URL_PATTERN = re.compile(r"^(?P<base>https?://[^/]+/.+?)/tree/(?P<branch>.+?)/?$")
+
+
+def _split_repo_branch(url: str) -> tuple[str, Optional[str]]:
+    """Split a branch-qualified repo URL into (clone_url, branch).
+
+    Accepted forms (branch=None for a plain repo URL):
+        https://github.com/videolan/vlc/tree/3.0.x   -> (repo, "3.0.x")
+        https://github.com/videolan/vlc#3.0.x        -> (repo, "3.0.x")
+
+    Without this, a "/tree/<branch>" URL would be handed to `git clone` as-is
+    and fail — and a plain URL always clones the repository's default branch
+    (for VLC that is `master`, i.e. the 4.0 development line, never `3.0.x`).
+    """
+    if "#" in url:
+        base, _, fragment = url.partition("#")
+        if fragment:
+            return base.rstrip("/"), fragment
+    match = TREE_URL_PATTERN.match(url)
+    if match:
+        return match.group("base"), match.group("branch")
+    return url, None
+
+
 def _is_safe_url(url: str) -> bool:
     try:
         parsed = urlparse(url)
@@ -78,30 +105,37 @@ async def fetch_code(job, target_dir: Path) -> Path:
 
 
 async def _clone_git(repo_url: str, target_dir: Path) -> Path:
-    if not _is_safe_repo_url(repo_url):
+    clone_url, branch = _split_repo_branch(repo_url)
+
+    if not _is_safe_repo_url(clone_url):
         raise ValueError(f"Invalid or potentially unsafe repo URL: {repo_url}")
 
-    repo_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")
+    repo_name = clone_url.rstrip("/").split("/")[-1].replace(".git", "")
     clone_dir = target_dir / repo_name
 
     if clone_dir.exists():
         shutil.rmtree(clone_dir)
 
+    branch_label = f" (branch {branch})" if branch else ""
+
     try:
         import git
 
-        print(f"[code_fetcher] Cloning {repo_url} -> {clone_dir}")
-        git.Repo.clone_from(repo_url, clone_dir, depth=1)
+        print(f"[code_fetcher] Cloning {clone_url}{branch_label} -> {clone_dir}")
+        clone_kwargs: dict[str, object] = {"depth": 1}
+        if branch:
+            clone_kwargs["branch"] = branch
+        git.Repo.clone_from(clone_url, clone_dir, **clone_kwargs)
         return clone_dir
     except ImportError:
         import subprocess
 
         git_path = shutil.which("git") or "/usr/bin/git"
-        subprocess.run(
-            [git_path, "clone", "--depth", "1", repo_url, str(clone_dir)],
-            check=True,
-            capture_output=True,
-        )
+        cmd = [git_path, "clone", "--depth", "1"]
+        if branch:
+            cmd += ["--branch", branch]
+        cmd += [clone_url, str(clone_dir)]
+        subprocess.run(cmd, check=True, capture_output=True)
         return clone_dir
     except Exception as e:
         raise RuntimeError(f"Git clone failed: {e}")
