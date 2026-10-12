@@ -16,6 +16,8 @@ _DANGEROUS_TAGS = (
 
 CSS = """
     @page { size: A4; margin: 2cm; }
+    @page landscape { size: A4 landscape; margin: 1.5cm; }
+    div.landscape { page: landscape; }
     body { font-family: 'DejaVu Sans', 'Liberation Sans', Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1f2937; }
     h1 { color: #dc2626; border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-top: 24px; }
     h1:first-of-type { margin-top: 0; }
@@ -25,6 +27,8 @@ CSS = """
     table { width: 100%; border-collapse: collapse; margin: 12px 0; }
     th, td { border: 1px solid #d1d5db; padding: 6px 10px; text-align: left; }
     th { background: #f3f4f6; font-weight: bold; }
+    div.landscape table { font-size: 9pt; }
+    div.landscape th, div.landscape td { padding: 5px 8px; }
     pre { background: #f1f5f9; padding: 10px 14px; border-radius: 4px; font-size: 9pt; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
     code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-size: 9pt; }
     pre code { background: none; padding: 0; }

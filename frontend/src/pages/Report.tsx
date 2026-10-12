@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeSlug from 'rehype-slug'
 import api from '../api/client'
 import { DashboardLayout } from '../components/Layout'
 import { useLanguage } from '../i18n/LanguageContext'
@@ -54,6 +55,34 @@ export default function Report() {
       if (!target) return
       const href = target.getAttribute('href')
       if (!href) return
+
+      // Internal anchor navigation (#vuln-NNN-... in the summary table).
+      if (href.startsWith('#')) {
+        let el = document.getElementById(href.slice(1))
+        if (!el) {
+          // Fallback: the report generator occasionally mangles slugs
+          // (e.g. "vuln-005-x-forwarded-proto-header-injection--metadata-poison".
+          // Find the section whose slug matches the VULN-NNN id instead.
+          const m = href.slice(1).match(/^(vuln-\d+)/)
+          if (m) {
+            const headings = contentRef.current?.querySelectorAll('h3') || []
+            for (const h of headings) {
+              const text = h.textContent || ''
+              const slug = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '')
+              if (slug.startsWith(m[1])) {
+                el = h as HTMLElement
+                break
+              }
+            }
+          }
+        }
+        if (el) {
+          e.preventDefault()
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+        return
+      }
+
       let apiPath: string | null = null
       if (href.startsWith('/api/audits/')) {
         // Strip any #anchor — the modal shows the file top.
@@ -165,7 +194,7 @@ export default function Report() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 lg:p-12">
           <div className="prose prose-gray max-w-none">
             <div className="report-content" ref={contentRef}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>
                 {markdown || ''}
               </ReactMarkdown>
             </div>

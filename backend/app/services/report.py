@@ -113,6 +113,30 @@ def _simplify_for_pdf(markdown_text: str) -> str:
     return "\n".join(out)
 
 
+def _wrap_wide_tables(html: str) -> str:
+    """Wrap markdown tables with >= 6 columns in a landscape page div.
+
+    WeasyPrint supports named pages: `page: landscape` on an element moves it
+    (and only it) onto A4 landscape pages, so wide tables like the input
+    inventory (7 cols) or the sweep/root-cause table (8 cols) are no longer
+    clipped on the right edge of a portrait page.
+    """
+    import re as _re
+
+    def _wrap(m: _re.Match) -> str:
+        table = m.group(0)
+        # Count columns from the first <tr> row
+        tr = _re.search(r"<tr[^>]*>(.*?)</tr>", table, _re.S | _re.I)
+        if not tr:
+            return table
+        cols = len(_re.findall(r"<t[hd][^>]*>", tr.group(1), _re.I))
+        if cols >= 6:
+            return '<div class="landscape">' + table + "</div>"
+        return table
+
+    return _re.sub(r"<table>.*?</table>", _wrap, html, flags=_re.S | _re.I)
+
+
 def generate_pdf(markdown_text: str, output_path: str) -> str:
     # Simplify the markdown for PDF
     simplified = _simplify_for_pdf(markdown_text)
@@ -121,7 +145,7 @@ def generate_pdf(markdown_text: str, output_path: str) -> str:
     html_path = output_path.replace(".pdf", ".html")
     html_content = ("<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"></head>"
                     "<body>\n"
-                    + markdown.markdown(cleaned, extensions=["tables", "fenced_code"])
+                    + _wrap_wide_tables(markdown.markdown(cleaned, extensions=["tables", "fenced_code"]))
                     + "\n</body></html>")
 
     with open(html_path, "w", encoding="utf-8") as f:
