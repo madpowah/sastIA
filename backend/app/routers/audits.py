@@ -398,6 +398,27 @@ def analysis_callback(audit_id: uuid.UUID, request: Request, body: dict, db: Ses
 
     report_markdown = body.get("report_markdown")
     if not report_markdown:
+        # Fallback 1: the agent's written report may be shipped in artifacts
+        # (README.md / report.md) even when report_markdown wasn't set.
+        artifacts_body = body.get("artifacts")
+        if isinstance(artifacts_body, dict):
+            for cand in ("README.md", "report.md"):
+                if artifacts_body.get(cand):
+                    report_markdown = artifacts_body[cand]
+                    print(f"[backend] recovered report markdown from artifacts/{cand}")
+                    break
+            if not report_markdown:
+                md_candidates = [
+                    (k, v) for k, v in artifacts_body.items()
+                    if k.endswith(".md") and "/" not in k
+                    and not k.startswith("phase") and k != "validation_results.md"
+                    and ("VulnHunter Security Audit Report" in v[:2000] or "## Summary" in v[:2000])
+                ]
+                if md_candidates:
+                    report_markdown = max(md_candidates, key=lambda kv: len(kv[1]))[1]
+                    print(f"[backend] recovered report markdown from artifacts/{max(md_candidates, key=lambda kv: len(kv[1]))[0]}")
+
+    if not report_markdown:
         vulns = body.get("vulnerabilities", [])
         if isinstance(vulns, list):
             report_markdown = _build_markdown_from_vulns(

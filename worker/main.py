@@ -134,6 +134,42 @@ async def _callback_with_secret(url: str, secret: str | None, payload: dict):
         print(f"[worker] Callback failed: {cb_err}")
 
 
+def _pick_report_markdown(vulnhunt_dir: Path) -> str | None:
+    """Return the agent's human-readable report markdown.
+
+    The report agent is *told* to write `README.md`, but models drift: some
+    runs emit `report.md` instead (or another top-level .md). Accept a list of
+    known names first, then fall back to the largest top-level markdown file
+    that looks like a VulnHunter report, so a naming drift never downgrades the
+    callback to the backend's generic markdown rebuild.
+    """
+    if not vulnhunt_dir.exists():
+        return None
+
+    for name in ("README.md", "report.md"):
+        p = vulnhunt_dir / name
+        if p.is_file() and p.stat().st_size > 0:
+            print(f"[worker] report markdown source: {name}")
+            return p.read_text(encoding="utf-8", errors="replace")
+
+    # Fallback: any top-level markdown that looks like the VulnHunter report.
+    candidates = []
+    for p in vulnhunt_dir.glob("*.md"):
+        if not p.is_file() or p.name.startswith("phase") or p.name == "validation_results.md":
+            continue
+        try:
+            head = p.read_text(encoding="utf-8", errors="replace")[:2000]
+        except OSError:
+            continue
+        if "VulnHunter Security Audit Report" in head or "## Summary" in head:
+            candidates.append(p)
+    if candidates:
+        best = max(candidates, key=lambda p: p.stat().st_size)
+        print(f"[worker] report markdown source (fallback): {best.name}")
+        return best.read_text(encoding="utf-8", errors="replace")
+    return None
+
+
 async def run_analysis(job: AnalyzeRequest):
     audit_dir = WORK_DIR / job.audit_id
     audit_dir.mkdir(parents=True, exist_ok=True)
@@ -164,7 +200,6 @@ async def run_analysis(job: AnalyzeRequest):
 
         # Worker handles callback (agent may not include secret properly)
         report_json = vulnhunt_dir / "report.json"
-        report_readme = vulnhunt_dir / "README.md"
         payload = {"report_markdown": ""}
         if report_json.exists():
             raw = report_json.read_text()
@@ -172,8 +207,8 @@ async def run_analysis(job: AnalyzeRequest):
                 payload = json.loads(raw)
             except json.JSONDecodeError:
                 payload["report_markdown"] = raw
-        if not payload.get("report_markdown") and report_readme.exists():
-            payload["report_markdown"] = report_readme.read_text()
+        if not payload.get("report_markdown"):
+            payload["report_markdown"] = _pick_report_markdown(vulnhunt_dir) or ""
 
         # Collect ALL vulnhunt artifacts for the callback (PoCs, exploit tests,
         # phase outputs, report.md, report.json, validation_results.md, ...)
