@@ -14,6 +14,7 @@ from app.models import User, Audit, AuditStatus, DockerStatus
 from app.schemas import AuditResponse, AuditListResponse, DashboardStats
 from app.auth import get_current_user
 from app.config import get_settings
+from app.services.artifact_links import linkify_report_artifacts
 
 ALLOWED_EXTENSIONS = {".zip", ".tar", ".gz", ".tgz", ".bz2", ".py", ".js", ".ts", ".java", ".cpp", ".c", ".h", ".go", ".rs", ".rb", ".php", ".swift", ".kt", ".scala", ".html", ".css", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".sh", ".bash", ".dockerfile", ".txt", ".md", ".xml", ".sql", ".gradle", ".mvn", ".csproj", ".sln"}
 
@@ -475,21 +476,14 @@ def analysis_callback(audit_id: uuid.UUID, request: Request, body: dict, db: Ses
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with open(target, "w", encoding="utf-8") as f:
                 f.write(content)
-        # Rewrite markdown links to use artifact endpoint
+        # Promote artifact code spans to markdown links, then rewrite every
+        # relative artifact link to the artifact endpoint. Without the
+        # promotion, a report whose agent wrote `poc/x.md` as a code span has
+        # NO clickable artifact at all (see app/services/artifact_links.py).
         if audit.report_markdown:
-            base_url = f"/api/audits/{audit.id}/artifacts/"
-            md = audit.report_markdown
-            import re
-            # Catch ALL relative artifact links (poc/, exploit_tests/, phase outputs,
-            # report.md, report.json, README.md, validation_results.md, ...)
-            # but leave absolute URLs, protocol-relative and in-page anchors untouched.
-            # Handles both [text](path) and [text](path#anchor) forms.
-            md = re.sub(
-                r'\]\(((?:poc|exploit_tests|README|report|phase\d|phase\d[a-z]|validation_results|docker_environment)[^)#\s]*(?:#[^)\s]*)?)',
-                lambda m: '](' + base_url + m.group(1),
-                md,
+            audit.report_markdown = linkify_report_artifacts(
+                audit.report_markdown, str(audit.id), set(artifacts.keys())
             )
-            audit.report_markdown = md
 
     db.commit()
     return {"status": "completed"}

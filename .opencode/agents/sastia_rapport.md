@@ -57,7 +57,8 @@ Puis pour chaque VULN-NNN :
 | **Location** | file:line |
 | **Entry Point** | ... |
 | **Data Flow** | source -> ... -> sink |
-| **PoC** | *(description statique de l'exploit)* |
+| **PoC** | [poc/VULN-NNN_description.md](poc/VULN-NNN_description.md) — ce que la PoC démontre |
+| **Exploit Test** | [exploit_tests/test_vuln_NNN_description.py](exploit_tests/test_vuln_NNN_description.py) — PASS/FAIL + raison |
 | **Fix** | *(recommandation de correction)* |
 | **Root Cause** | ... |
 | **Status** | Confirmed |
@@ -129,6 +130,7 @@ Puis pour chaque VULN-NNN :
 
 ### Contraintes
 - **Langue du rapport** : suis impérativement la langue indiquée par l'orchestrateur
+- **Liens d'artefacts OBLIGATOIRES** : chaque finding DOIT référencer son PoC et son exploit test sous forme de **lien markdown** `[libellé](poc/fichier.md)` / `[libellé](exploit_tests/fichier.py)`. Jamais en `code span` (`` `poc/fichier.md` ``) ni en simple description texte. Le backend réécrit ces liens pour les rendre cliquables dans l'interface ; un chemin en code span ne s'ouvre pas (pas de popup). Il en va de même pour la table finale « Artifacts ».
 - Le `summary_table` DOIT être une chaîne contenant le tableau markdown exact
 - Chaque vulnérabilité DOIT avoir un CWE identifier
 - Les IDs sont au format VULN-NNN
