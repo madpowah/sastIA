@@ -40,16 +40,16 @@ async def run_manager_agent(
     docker_cleanup = ""
     if docker_analysis:
         docker_validation = f"""
-5. **Docker Build** : Active @SastIA_docker avec CODE_DIR={code_dir} pour builder l'image et lancer le conteneur. Récupère ## Docker Environment Summary.
+5. **Docker Build** : Active @sastia_docker avec CODE_DIR={code_dir} pour builder l'image et lancer le conteneur. Récupère ## Docker Environment Summary.
 
-6. **Docker Validation** : Active @SastIA_analyzer avec :
+6. **Docker Validation** : Active @sastia_analyzer avec :
    "Validation Docker. VULNHUNT_DIR={code_dir}/vulnhunt_results DOCKER_URL=<url> DOCKER_CONTAINER=<name>
     Exécute les PoC de poc/ et exploit_tests/ contre le conteneur.
     Marque : VALIDATED / FAILED / NOT-TESTED. Écris validation_results.md"
 
-7. **Cleanup Docker** : Active @SastIA_docker pour supprimer conteneur + image
+7. **Cleanup Docker** : Active @sastia_docker pour supprimer conteneur + image
 """
-        docker_cleanup = "\n8. **NETTOYAGE** : Active @SastIA_docker pour supprimer conteneur + image"
+        docker_cleanup = "\n8. **NETTOYAGE** : Active @sastia_docker pour supprimer conteneur + image"
 
     phases_dir = os.path.expanduser("~/.config/opencode/skills/vulnhunt/phases")
     skill_dir = os.path.expanduser("~/.config/opencode/skills/vulnhunt")
@@ -75,15 +75,15 @@ Compatible tous modèles. Statique par défaut. Si DOCKER_ENABLED, validation Do
 
 Suis `${{SKILL_DIR}}/SKILL.md`. Phases dans `${{PHASES_DIR}}/`.
 
-1. **Phase 1 - Recon** : Écris ##PHASE: Recon## puis active @SastIA_analyzer : "Phase 1. VULNHUNT_DIR={code_dir}/vulnhunt_results PHASES_DIR={phases_dir}. Suis phase1_recon.md. Écris phase1_output.md"
+1. **Phase 1 - Recon** : Écris ##PHASE: Recon## puis active @sastia_analyzer : "Phase 1. VULNHUNT_DIR={code_dir}/vulnhunt_results PHASES_DIR={phases_dir}. Suis phase1_recon.md. Écris phase1_output.md"
 
-2. **Phase 2 - Hunt** : Écris ##PHASE: Hunt## puis lis ${{PHASES_DIR}}/phase2_hunt.md. Crée les partitions. Dispatche les agents de traçage (3/partition + sink-driven). Utilise @SastIA_analyzer.
+2. **Phase 2 - Hunt** : Écris ##PHASE: Hunt## puis lis ${{PHASES_DIR}}/phase2_hunt.md. Crée les partitions. Dispatche les agents de traçage (3/partition + sink-driven). Utilise @sastia_analyzer.
 
-3. **Phase 2b - Verify** : Écris ##PHASE: Verify## puis active @SastIA_analyzer : "Phase 2b. Mêmes vars. Suis phase2b_verify.md. Écris phase2b_output.md"
+3. **Phase 2b - Verify** : Écris ##PHASE: Verify## puis active @sastia_analyzer : "Phase 2b. Mêmes vars. Suis phase2b_verify.md. Écris phase2b_output.md"
 
-4. **Phase 3 - Reproduce/Fix/Sweep** : Écris ##PHASE: Reproduce## puis active @SastIA_analyzer : "Phase 3. Mêmes vars. Suis phase3_reproduce_test.md, phase3c_fixes.md, phase3d_sweep.md. Écris poc/, exploit_tests/, phase3_output.md, phase3d_output.md"
+4. **Phase 3 - Reproduce/Fix/Sweep** : Écris ##PHASE: Reproduce## puis active @sastia_analyzer : "Phase 3. Mêmes vars. Suis phase3_reproduce_test.md, phase3c_fixes.md, phase3d_sweep.md. Écris poc/, exploit_tests/, phase3_output.md, phase3d_output.md"
 {docker_validation}
-7. **Rapport** : Écris ##PHASE: Report## puis active @SastIA_rapport. Suis ${{PHASES_DIR}}/phase4_report.md. Inclus validation_results.md si dispo. Écris le JSON dans ${{VULNHUNT_DIR}}/report.json
+7. **Rapport** : Écris ##PHASE: Report## puis active @sastia_rapport. Suis ${{PHASES_DIR}}/phase4_report.md. Inclus validation_results.md si dispo. Écris le JSON dans ${{VULNHUNT_DIR}}/report.json
 {docker_cleanup}
 IMPORTANT : Ne fais pas d'analyse toi-même. Dispatche TOUT."""
 
@@ -94,10 +94,13 @@ IMPORTANT : Ne fais pas d'analyse toi-même. Dispatche TOUT."""
         model = f"opencode-go/{model}"
     opencode_cmd = _find_opencode()
     Path(prompt_file).write_text(prompt, encoding="utf-8")
+    # NOTE: OpenCode 2 removed the `run --dir` flag (Unrecognized flag: --dir).
+    # The working directory is set with the subprocess `cwd=` below, which is
+    # what `--dir` did; passing the directory as a positional is ambiguous
+    # because `run` takes a variadic message.
     cmd = [
         *opencode_cmd, "run",
         "--model", model,
-        "--dir", audit_dir,
         prompt,
     ]
 

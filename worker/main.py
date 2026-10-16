@@ -216,6 +216,17 @@ async def run_analysis(job: AnalyzeRequest):
         if not payload.get("report_markdown"):
             payload["report_markdown"] = _pick_report_markdown(vulnhunt_dir) or ""
 
+        # No report at all means the agent never got far enough to write one
+        # (crash, bad CLI flags, missing model...). Without this guard the run
+        # is reported as COMPLETED and the backend stores an empty generic
+        # report, silently turning a total failure into a fake success.
+        if not payload.get("report_markdown"):
+            raise RuntimeError(
+                "The agent produced no report: no report file found in "
+                f"{vulnhunt_dir}. The agent probably failed to start — "
+                f"check {audit_dir}/code/opencode.log"
+            )
+
         # Exact severity counts: report.json already carries the agent's own
         # tally. Without this the backend has no `vulnerabilities`/`metrics`
         # key and falls back to regex-parsing the markdown, which over-counts
