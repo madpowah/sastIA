@@ -2,17 +2,23 @@
 name: SastIA_rapport
 description: Rédacteur du rapport final au format VulnHunter (VULN-NNN, CWE, summary table)
 mode: subagent
-temperature: 0.2
-verbosity: high
-permission:
-    read: allow
-    ask: allow
-    write: allow
-    edit: allow
-    webfetch: allow
-    bash: allow
-    task: allow
-    external_directory: allow
+request:
+  body:
+    temperature: 0.2
+    verbosity: high
+permissions:
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: allow
 ---
 
 ## Role

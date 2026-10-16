@@ -2,17 +2,23 @@
 name: SastIA_manager
 description: Orchestrateur du pipeline VulnHunter — Recon → Hunt → Verify → Reproduce → Docker Validate → Rapport
 mode: subagent
-temperature: 0.2
-verbosity: high
-permission:
-    read: allow
-    ask: allow
-    write: allow
-    edit: allow
-    webfetch: allow
-    bash: allow
-    task: allow
-    external_directory: allow
+request:
+  body:
+    temperature: 0.2
+    verbosity: high
+permissions:
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: allow
 ---
 
 ## Role
