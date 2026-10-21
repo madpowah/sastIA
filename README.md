@@ -4,6 +4,8 @@
 
 > AI-powered static analysis with adversarial verification and active Docker exploitation.
 
+![SAST IA dashboard — audit overview with vulnerability breakdown by severity](docs/screenshots/dashboard.png)
+
 ---
 
 ## Architecture
