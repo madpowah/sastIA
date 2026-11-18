@@ -281,8 +281,10 @@ contredisent manifestement cette classification, signale-le dans le rapport
 - DOCKER_ENABLED={'true' if docker_analysis else 'false'}
 - TARGET_MODE={'dynamic' if docker_analysis else 'static'}
 
-Compatible tous modèles. Statique par défaut. Si DOCKER_ENABLED, la validation
-dynamique s'exécute dans le conteneur Docker. {pipeline_note}
+Compatible tous modèles. L'ANALYSE est statique, mais les tests d'exploit DOIVENT être exécutés :
+**Bash is AVAILABLE for exploit-test execution** (`--no-read-only --enable-bash`). Écris des tests
+exécutables, lance-les contre la cible, et colle la sortie brute observée.
+Si DOCKER_ENABLED, la validation dynamique s'exécute dans le conteneur Docker. {pipeline_note}
 
 ## Pipeline
 

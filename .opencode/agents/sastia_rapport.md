@@ -100,7 +100,7 @@ Puis pour chaque VULN-NNN :
 | **Entry Point** | ... |
 | **Data Flow** | source -> ... -> sink |
 | **PoC** | [poc/VULN-NNN_description.md](poc/VULN-NNN_description.md) — ce que la PoC démontre |
-| **Exploit Test** | [exploit_tests/test_vuln_NNN_description.py](exploit_tests/test_vuln_NNN_description.py) — PASS/FAIL + raison |
+| **Exploit Test** | [exploit_tests/test_vuln_NNN_description.py](exploit_tests/test_vuln_NNN_description.py) — VERDICT (`VALIDATED` / `STATIC-PROOF` / `FAILED` / `NOT-TESTED`) + commande exacte exécutée + sortie brute observée |
 | **Fix** | *(recommandation de correction)* |
 | **Root Cause** | ... |
 | **Status** | Confirmed / Potential |
@@ -198,6 +198,11 @@ ils sont requis en natif.
   Le backend réécrit ces liens pour les rendre cliquables dans l'interface ;
   un chemin en code span ne s'ouvre pas (pas de popup). Il en va de même pour
   la table finale « Artifacts » et les preuves natives (`evidence/...`).
+- **Deux verdicts distincts** : `VALIDATED` est réservé à une attaque
+  **exécutée contre la cible** avec sortie observée. Une preuve obtenue en
+  lisant le source (grep, modèle de code, vérification de configuration) est
+  `STATIC-PROOF`. Ne jamais écrire `VALIDATED` pour un test statique, et
+  toujours citer la commande exacte + la sortie brute.
 - Le `summary_table` DOIT être une chaîne contenant le tableau markdown exact
 - Chaque vulnérabilité DOIT avoir un CWE identifier
 - Les IDs sont au format VULN-NNN

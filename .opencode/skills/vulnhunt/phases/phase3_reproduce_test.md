@@ -41,13 +41,16 @@ format based on context:
 > tests for `SUBSUMED-BY: VULN-PLATFORM-*` findings — the platform
 > PoC stands in.
 
-#### Runnable PoC (when a test environment is available)
+#### Runnable PoC (MANDATORY when Bash is available)
 
-The runnable form below is **only usable when the kickoff prompt says
-"Bash is AVAILABLE for exploit-test execution"** (i.e. the operator
-passed `--no-read-only --enable-bash`). Otherwise produce only the
-Static Data Flow Trace form further down — the model has no Bash tool
-to invoke it and the runnable script is illustrative only.
+The kickoff prompt of a Bash-enabled run states **"Bash is AVAILABLE for
+exploit-test execution"**. When that line is present — it is in SASTIA runs —
+the runnable form below is **mandatory**: write the script, run it against the
+target, and paste the raw output into the PoC.
+
+The Static Data Flow Trace form further down is a fallback for **read-only runs
+only**. Using it here is a violation: an unexecuted trace cannot distinguish
+"vulnerable" from "guarded by a defence the trace missed".
 
 ```bash
 #!/bin/bash
@@ -139,6 +142,32 @@ gains and assert on that outcome — the principle is the same.
 
 A test that proves "the vulnerable code path runs" but the attack is blocked by
 downstream defenses is a **FAIL**, not a PASS. Classify it as a code smell.
+
+### No tautologies (the assertion must observe the target)
+
+An assertion MUST depend on a result **observed from the target**: a process
+exit code, bytes received on a socket, a file the target produced, an ASan
+report, an HTTP status returned by the running service.
+
+It must NEVER depend on a value the test itself hardcodes. This pattern is
+forbidden — it can never fail, so it proves nothing:
+
+```python
+def _vulnerable_path(payload):
+    blocked = False                                   # hardcoded
+    return (not blocked) and payload is not None
+
+assert _vulnerable_path("ATTACKER_PAYLOAD")           # always passes
+```
+
+Forbidden shapes: `blocked = False`, `defence = None`, `vulnerable = True`, or
+any boolean constant feeding the assertion. Simulating the target's logic in
+Python (`class Heap`, a re-implementation of the C function) is a **model**, not
+an exploit test: it may accompany a static PoC but it cannot produce a PASS.
+
+If you cannot observe a result in this environment, write the static PoC, say
+so explicitly, and mark the finding `STATIC-PROOF`. Do not manufacture a
+passing test.
 
 ### What to Write
 

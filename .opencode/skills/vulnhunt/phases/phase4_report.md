@@ -45,7 +45,7 @@ Then for each finding, provide the full detail:
 | **Entry Point** | ... |
 | **Data Flow** | source -> ... -> sink |
 | **PoC** | `${VULNHUNT_DIR}/poc/VULN-NNN_description.md` |
-| **Exploit Test** | `${VULNHUNT_DIR}/exploit_tests/test_vuln_NNN.py` — PASS/FAIL + reason |
+| **Exploit Test** | `${VULNHUNT_DIR}/exploit_tests/test_vuln_NNN.py` — VERDICT (`VALIDATED` / `STATIC-PROOF` / `FAILED` / `NOT-TESTED`) + the exact command run + the raw observed output |
 | **Fix** | [inline diff or link] |
 | **Root Cause** | [shared root cause name, if this instance is part of a sweep group] |
 | **Status** | Confirmed / Fixed / Verified |
@@ -61,6 +61,21 @@ Every finding MUST include a CWE identifier. Use the most specific CWE that appl
 field is empty, says "N/A", or says "see above." Each field MUST contain a file path
 to the saved artifact. If you cannot produce a PoC or exploit test, the finding has
 not been proven and must be downgraded to Potential or eliminated.
+
+**VERDICT RULE — two distinct proofs.** `VALIDATED` is reserved for an attack that
+was actually **executed against the running target** and produced observed output
+(HTTP status/body, bytes on the wire, file content read from outside the intended
+directory, ASan report, process exit code). Anything proven only by reading the
+source — a grep for a marker, a re-implementation of the code, a configuration
+check — is `STATIC-PROOF`. Never write `VALIDATED` for a static test.
+
+Each **Exploit Test** row MUST quote:
+1. the exact command (or script path + invocation) that was run;
+2. the raw observed output, verbatim — not paraphrased, not "payload crafted";
+3. the verdict.
+
+A finding without observed output is `STATIC-PROOF`, and the report must say so
+in the row itself, not only in a footnote.
 
 **Code smells go in a separate section.** Findings where the exploit test showed
 "code runs but attack is mitigated" are NOT vulnerabilities. List them after the

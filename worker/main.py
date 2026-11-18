@@ -13,6 +13,7 @@ from code_fetcher import fetch_code, _is_safe_url, _is_trusted_url
 from opencode_runner import run_manager_agent
 from docker_cleanup import cleanup_audit_by_id
 from target_detection import detect_from_env
+from exploit_audit import append_integrity_section, audit_exploit_tests, write_report
 
 WORK_DIR = Path(os.getenv("WORK_DIR", "/tmp/sastia-worker"))
 WORK_DIR.mkdir(parents=True, exist_ok=True)
@@ -269,6 +270,24 @@ async def run_analysis(job: AnalyzeRequest):
                 f"check {audit_dir}/code/opencode.log"
             )
         payload.setdefault("target_type", detection.target_type)
+
+        # Deterministic integrity check of the generated exploit tests. The
+        # Docker step merely replays these tests, so a tautological or static
+        # test would otherwise be able to masquerade as a real validation.
+        test_findings = audit_exploit_tests(vulnhunt_dir)
+        if test_findings:
+            real = sum(1 for f in test_findings if f.supports_validation)
+            print(
+                f"[worker] exploit tests: {len(test_findings)} analysed | "
+                f"{real} real attack(s) | "
+                f"{len(test_findings) - real} static/simulated/tautological"
+            )
+            write_report(vulnhunt_dir)
+            report_md = payload.get("report_markdown")
+            if isinstance(report_md, str):
+                payload["report_markdown"] = append_integrity_section(
+                    report_md, test_findings
+                )
 
         # Exact severity counts: report.json already carries the agent's own
         # tally. Without this the backend has no `vulnerabilities`/`metrics`
