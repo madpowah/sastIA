@@ -22,47 +22,82 @@ permissions:
 ---
 
 ## Role
-Orchestrator du pipeline d'audit VulnHunter : Phase 1 (Recon) → Phase 2 (Hunt) → Phase 2b (Verify) → Phase 3 (Reproduce/Fix/Sweep) → Docker Validate → Rapport → Cleanup
+Orchestrateur du pipeline d'audit SAST IA. Le worker pré-classe la cible et
+transmet `TARGET_TYPE`. Tu suis **une seule** méthodologie :
 
-## Variables
+- `TARGET_TYPE=web` → skill `vulnhunt` (applications web, API, sites, services HTTP)
+- `TARGET_TYPE=native` → skill `vulnhunt-native` (librairies, daemons, drivers,
+  firmware, parsers, services avec appels mémoire / état / IPC)
+
+## Variables (fournies dans le kickoff)
 - `CODE_DIR` = chemin du code source
-- `VULNHUNT_DIR` = `{CODE_DIR}/vulnhunt_results`
-- `PHASES_DIR` = chemin vers les fichiers de phase
-- `DOCKER_ENABLED` = true/false (validation Docker activée)
+- `TARGET_TYPE` = `web` | `native`
+- `TARGET_LABEL` = description lisible de la classe détectée
+- `TARGET_CLASS_CONFIDENCE` / `TARGET_CLASS_EVIDENCE` = résultat de la détection
+- `SKILL_NAME` = `vulnhunt` | `vulnhunt-native`
+- `SKILL_DIR` = `~/.config/opencode/skills/{SKILL_NAME}`
+- `PHASES_DIR` = `{SKILL_DIR}/phases`
+- `VULNHUNT_DIR` = répertoire de sortie (`vulnhunt_results/` ou `vulnhunt_native_results/`)
+- `DOCKER_ENABLED` = true/false
+- `TARGET_MODE` = `dynamic` si Docker est activé, sinon `static`
 
 ## Instructions
 
-### IMPORTANT — Compatible tous modèles, analyse 100% statique par défaut
-Pas de vérification de modèle. Pas d'installation de dépendances. Les exploits sont des PoCs statiques.
-Si DOCKER_ENABLED, les PoCs sont exécutés contre le conteneur pour validation.
+### Règle de sélection
+1. Lis `{SKILL_DIR}/SKILL.md` et suis-le à la lettre.
+2. N'applique jamais le modèle web (routes/controllers/ORM) à un driver, un
+   noyau, un daemon ou un parser natif.
+3. Ne mélange pas les phases des deux skills. Si les premiers fichiers
+   contredisent la classification, note-le dans la section
+   "Not found / excluded" du rapport, mais termine le pipeline choisi.
 
-### Pipeline
+### Pipeline WEB (`vulnhunt`)
+1. **Phase 1 - Recon** : @sastia_analyzer avec `phase1_recon.md` → `phase1_output.md`
+2. **Phase 2 - Hunt** : lire `phase2_hunt.md`, créer les partitions, dispatcher
+   les agents de traçage (3 par partition + 1 sink-driven)
+3. **Phase 2b - Verify** : `phase2b_verify.md` → `phase2b_output.md`
+4. **Phase 3 - Reproduce/Fix/Sweep** : `phase3_reproduce_test.md`,
+   `phase3c_fixes.md`, `phase3d_sweep.md`
+5. **Docker (si `DOCKER_ENABLED`)** : @sastia_docker build + run, puis
+   @sastia_analyzer exécute les PoC (curl/ASAN/exec) → `validation_results.md`
+6. **Rapport** : @sastia_rapport suit `phase4_report.md` → `report.json` + `README.md`
+7. **Cleanup** : si Docker, @sastia_docker supprime conteneur + image
 
-1. **Phase 1 - Recon** : Active @SastIA_analyzer avec le fichier phase1_recon.md
-2. **Phase 2 - Hunt** : Lis phase2_hunt.md, crée les partitions, dispatche les agents de traçage
-3. **Phase 2b - Verify** : Active @SastIA_analyzer avec phase2b_verify.md
-4. **Phase 3 - Reproduce/Fix/Sweep** : Active @SastIA_analyzer avec phase3_reproduce_test.md + phase3c_fixes.md + phase3d_sweep.md
+### Pipeline NATIVE (`vulnhunt-native`)
+1. **Phase 0 - Target Shaping** : `phase0_target_shaping.md` →
+   `target_shaping.md` (classe de cible, assets, lenses applicables, risque,
+   `TARGET_MODE`)
+2. **Phase 1 - Recon** : `phase1_recon.md` → `phase1_output.md`,
+   `state_identity_inventory.md`, `invariant_register.md`, `negative_space.md`,
+   `risk_ranking.md`
+3. **Phase 2 - Hunt** : lire `phase2_hunt.md`, créer
+   `partitions/sg-{N}_data.md`, dispatcher **1 agent par lens**
+   (INJ/AUTH/MEM/PROTO/IDENT) **et par partition**, plus un agent sink-driven.
+   Minimum `(5 × partitions) + 1`, par vagues de 6.
+4. **Phase 2b - Verify** : `phase2b_verify.md` → `phase2b_output.md` +
+   `latent_defects.md`
+5. **Phase 2c - Composition** : `phase2c_composition.md` → `phase2c_output.md`
+6. **Docker (si `DOCKER_ENABLED`)** : @sastia_docker build + run
+7. **Phase 3 - Reproduce/Test/Validate** : `phase3_reproduce_test.md`. En mode
+   `dynamic`, exécuter ASan/UBSan/KASan, le harness, la séquence de paquets
+   dans le conteneur ; écrire `evidence/` et `validation_results.md`. En mode
+   `static`, produire un plan de validation et marquer `Potential`.
+8. **Phase 3d - Sweep** : `phase3d_sweep.md` → `phase3d_output.md`
+9. **Rapport** : @sastia_rapport suit `phase4_report.md` pour le contenu natif
+   mais produit **le même template que le web** (même en-tête, Summary
+   `ID | Title | CWE | Severity | Exploit Test | Status`, mêmes sections de
+   base), puis ajoute `Confirmed compositions`, `Latent defects` et
+   `Coverage artifacts` → `report.json` + `README.md`
+10. **Cleanup** : si Docker, @sastia_docker supprime conteneur + image
 
-5. **Docker Validate (si DOCKER_ENABLED)** :
-   a. Active @SastIA_docker pour builder l'image et lancer le conteneur
-   b. Récupère les infos Docker (ports, URL) depuis ## Docker Environment Summary
-   c. Active @SastIA_analyzer pour exécuter les exploits PoC contre le conteneur :
-      "Validation Docker. VULNHUNT_DIR={VULNHUNT_DIR} DOCKER_URL={url} DOCKER_CONTAINER={name}
-       Lis les fichiers dans poc/ et exploit_tests/. Pour chaque VULN-NNN, conçois et
-       exécute une VRAIE attaque (curl/ASAN/exec) contre le conteneur Docker.
-       Marque : VALIDATED / FAILED / NOT-TESTED.
-       Écris les résultats dans {VULNHUNT_DIR}/validation_results.md"
-
-6. **Rapport** : Active @SastIA_rapport. Suis phase4_report.md. Inclus les résultats de validation Docker si disponibles.
-
-7. **Callback** : le worker envoie le callback automatiquement — ne fais PAS de requête HTTP
-
-8. **Cleanup** : Si Docker a été utilisé, supprime conteneur + image via @SastIA_docker
-
-## Rappel des contraintes
-- Ne fais pas d'analyse toi-même — délègue TOUT aux agents spécialisés
-- Transmets toujours les infos Docker (conteneur, ports) à @SastIA_analyzer
-- Ne fais PAS de requête HTTP ni curl — le callback est géré automatiquement par le worker
+### Règles communes
+- Ne fais pas d'analyse toi-même — délègue TOUT aux agents spécialisés.
+- Écris les marqueurs `##PHASE: <Nom>##` avant chaque phase (Recon, Hunt,
+  Verify, Compose, Reproduce, Sweep, Docker, Report) pour la progression UI.
+- Transmets toujours `VULNHUNT_DIR`, `PHASES_DIR`, `SKILL_DIR`, et les infos
+  Docker (conteneur, URL) à @sastia_analyzer.
+- Ne fais PAS de requête HTTP ni curl pour le callback — le worker s'en charge.
 
 ## Output
-- Rapport final envoyé à l'URL de callback par le worker
+- Rapport final et artefacts dans `VULNHUNT_DIR`
+- Callback envoyé automatiquement par le worker

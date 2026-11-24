@@ -16,7 +16,7 @@ from app.auth import get_current_user
 from app.config import get_settings
 from app.services.artifact_links import linkify_report_artifacts
 
-ALLOWED_EXTENSIONS = {".zip", ".tar", ".gz", ".tgz", ".bz2", ".py", ".js", ".ts", ".java", ".cpp", ".c", ".h", ".go", ".rs", ".rb", ".php", ".swift", ".kt", ".scala", ".html", ".css", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".sh", ".bash", ".dockerfile", ".txt", ".md", ".xml", ".sql", ".gradle", ".mvn", ".csproj", ".sln"}
+ALLOWED_EXTENSIONS = {".zip", ".tar", ".gz", ".tgz", ".bz2", ".py", ".js", ".ts", ".java", ".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh", ".go", ".rs", ".rb", ".php", ".swift", ".kt", ".kts", ".scala", ".cs", ".html", ".css", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".sh", ".bash", ".dockerfile", ".txt", ".md", ".xml", ".sql", ".gradle", ".mvn", ".csproj", ".sln", ".asm", ".s", ".S", ".ld", ".lds", ".dts", ".dtsi", ".ino", ".ko"}
 
 
 def parse_vulnerabilities_from_markdown(markdown: str) -> dict:
@@ -184,14 +184,19 @@ def _dispatch_to_worker(audit: Audit, user: User, db: Session):
 ARTIFACTS_DIR = os.path.join(settings.UPLOAD_DIR, "artifacts")
 
 PHASE_LABELS = {
+    "shaping": "Phase 0: Target Shaping",
     "recon": "Phase 1: Reconnaissance",
     "hunt": "Phase 2: Vulnerability Hunt",
     "verify": "Phase 2b: Adversarial Verification",
+    "compose": "Phase 2c: Composition",
     "reproduce": "Phase 3: Reproduce & Fix",
     "sweep": "Phase 3d: Codebase Sweep",
     "docker": "Docker Build & Validation",
     "report": "Phase 4: Report Generation",
 }
+
+# Native-only markers map onto the shared 6-step progress bar.
+PHASE_ALIASES = {"shaping": "recon", "compose": "verify", "sweep": "reproduce"}
 
 
 @router.get("/{audit_id}/progress")
@@ -218,12 +223,13 @@ def get_audit_progress(audit_id: str, current_user: User = Depends(get_current_u
             import re
             matches = re.findall(r"##PHASE:\s*(\w+)##", log_text)
             if matches:
-                last = matches[-1].lower()
+                raw = matches[-1].lower()
+                last = PHASE_ALIASES.get(raw, raw)
                 phases = ["recon", "hunt", "verify", "reproduce", "docker", "report"]
                 if last in phases:
                     idx = phases.index(last)
-                    progress["phase"] = last
-                    progress["phase_label"] = PHASE_LABELS.get(last, last)
+                    progress["phase"] = raw
+                    progress["phase_label"] = PHASE_LABELS.get(raw, raw)
                     progress["phase_num"] = idx + 1
                     progress["worker_log_preview"] = log_text[-500:]
     except Exception as e:

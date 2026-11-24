@@ -1,6 +1,6 @@
 # SAST IA — Automated Security Analysis
 
-**v0.2** — *VulnHunter pipeline + real Docker validation*
+**v0.3** — *Automatic web/native detection + VulnHunter & VulnHunter Native pipelines*
 
 > AI-powered static analysis with adversarial verification and active Docker exploitation.
 
@@ -27,14 +27,13 @@
 │         Analysis Worker (FastAPI, port 9000)  │
 │                                              │
 │  1. Code Fetcher                              │
-│  2. VulnHunter Pipeline:                      │
-│     Phase 1  Recon → Input inventory + sinks  │
-│     Phase 2  Hunt  → Trace inputs → sinks     │
-│     Phase 2b Verify → Adversarial refutation  │
-│     Phase 3  Reproduce/Fix/Sweep              │
-│     (opt.) Docker Build + Real Exploits       │
-│     Phase 4  Report (VULN-NNN + JSON)         │
-│  3. Callback → backend                        │
+│  2. Target Detector: web | native             │
+│  3. Pipeline:                                 │
+│     web    → vulnhunt                         │
+│     native → vulnhunt-native                  │
+│     (Recon → Hunt → Verify → Reproduce →      │
+│      optional Docker validation → Report)     │
+│  4. Callback → backend                        │
 └──────────────────────────────────────────────┘
 ```
 
@@ -52,6 +51,32 @@ Open `http://localhost:5173` and login with:
 - **Password**: `admin123`
 
 ---
+
+## What's new in v0.3
+
+**Automatic target detection** — Before launching the manager agent, the worker
+classifies the target from its file tree and a bounded content sample
+(`worker/target_detection.py`):
+
+- **web** → `vulnhunt` — HTTP apps, APIs, sites, managed services.
+- **native** → `vulnhunt-native` — libraries, daemons, drivers, firmware,
+  protocol parsers, anything using memory/lifetime primitives, state machines
+  or IPC.
+
+Signals include C/C++/Rust/asm sources, `malloc`/`free`/`memcpy`/`unsafe`,
+kernel/driver macros (`module_init`, `copy_from_user`, `ioctl`, `DriverEntry`),
+native build files, versus HTTP framework markers and web dependencies. An
+explicit `analysis_type=web|native` (or `SASTIA_TARGET_TYPE`) overrides the
+heuristic.
+
+**VulnHunter Native pipeline** — state/identity inventory, invariant register,
+negative space, MEM/PROTO/IDENT lenses, bounded composition of latent defects
+(Phase 2c), and optional dynamic validation with ASan/UBSan/KASan.
+
+**Unified report template** — both pipelines emit the same VulnHunter report
+(VULN-NNN, Summary table, finding details, input inventory, sweep, artifacts)
+and the same `report.json` schema. Native-only sections (compositions, latent
+defects, coverage artifacts) are added inside that template.
 
 ## What's new in v0.2
 
@@ -105,9 +130,15 @@ sastIA/
 │   │   ├── sastia_analyzer.md     # Phases 1-3 + Docker validation
 │   │   ├── sastia_rapport.md      # VULN-NNN report
 │   │   └── sastia_docker.md       # Docker build & cleanup
-│   └── skills/vulnhunt/
-│       ├── SKILL.md               # Adapted (static-only, all models)
-│       └── phases/                # 11 VulnHunter phase files
+│   └── skills/
+│       ├── vulnhunt/              # Web pipeline
+│       │   ├── SKILL.md
+│       │   └── phases/            # 11 VulnHunter phase files
+│       └── vulnhunt-native/       # Native / non-web pipeline
+│           ├── SKILL.md
+│           ├── phases/            # Phase 0 + INJ/AUTH/MEM/PROTO/IDENT
+│           ├── references/        # Archetypes, native inputs, schemas
+│           └── templates/         # State/identity, invariants, latent defects
 ├── backend/
 │   ├── app/routers/
 │   │   ├── audits.py              # + artifacts endpoint
@@ -119,7 +150,8 @@ sastIA/
 │       └── Report.tsx             # Modal viewer, ZIP, MD toggle
 └── worker/
     ├── main.py                    # + skills sync, artifact collect
-    └── opencode_runner.py         # VulnHunter prompt, worker callback
+    ├── target_detection.py        # web vs native heuristic (auto-detection)
+    └── opencode_runner.py         # web/native prompt, worker callback
 ```
 
 ---
@@ -128,7 +160,9 @@ sastIA/
 
 | Feature | Description |
 |---|---|
-| **VulnHunter pipeline** | 4 phases: Recon → Hunt → Verify → Report |
+| **Auto detection** | Classifies web vs native before choosing the skill |
+| **VulnHunter pipeline** | Web: Recon → Hunt → Verify → Report |
+| **VulnHunter Native** | MEM/PROTO/IDENT lenses, state inventory, invariant register, composition |
 | **Adversarial verification** | Systematic attempt to refute each finding |
 | **Real Docker validation** | curl / ASAN / exec — not self-validation |
 | **VULN-NNN format** | One finding per sink, with CWE |

@@ -153,7 +153,7 @@ export default function NewAudit() {
                     ref={fileInputRef}
                     type="file"
                     className="hidden"
-                    accept=".zip,.tar.gz,.tgz,.py,.js,.ts,.java,.php,.go,.rs,.rb"
+                    accept=".zip,.tar,.tar.gz,.tgz,.bz2,.py,.js,.ts,.java,.php,.go,.rs,.rb,.c,.cc,.cpp,.cxx,.h,.hpp,.asm,.s,.ld,.dts,.ino,.cs,.kt"
                     onChange={(e) => setCodeFile(e.target.files?.[0] || null)}
                   />
                   {codeFile ? (

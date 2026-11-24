@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from code_fetcher import fetch_code, _is_safe_url, _is_trusted_url
 from opencode_runner import run_manager_agent
 from docker_cleanup import cleanup_audit_by_id
+from target_detection import detect_from_env
 
 WORK_DIR = Path(os.getenv("WORK_DIR", "/tmp/sastia-worker"))
 WORK_DIR.mkdir(parents=True, exist_ok=True)
@@ -134,6 +135,23 @@ async def _callback_with_secret(url: str, secret: str | None, payload: dict):
         print(f"[worker] Callback failed: {cb_err}")
 
 
+def _resolve_results_dir(code_dir: Path, detection) -> Path:
+    """Return the populated results directory, primary first."""
+    primary = code_dir / detection.results_dir_name
+    candidates = [
+        primary,
+        code_dir / "vulnhunt_results",
+        code_dir / "vulnhunt_native_results",
+    ]
+    for candidate in candidates:
+        try:
+            if candidate.is_dir() and any(candidate.iterdir()):
+                return candidate
+        except OSError:
+            continue
+    return primary
+
+
 def _pick_report_markdown(vulnhunt_dir: Path) -> str | None:
     """Return the agent's human-readable report markdown.
 
@@ -188,7 +206,23 @@ async def run_analysis(job: AnalyzeRequest):
         code_dir = await fetch_code(job, audit_dir / "code")
         print(f"[worker] Code fetched to {code_dir}")
 
-        vulnhunt_dir = Path(str(code_dir)) / "vulnhunt_results"
+        # Detect web vs non-web/native before choosing the VulnHunter skill.
+        # `analysis_type` can force a pipeline ("web"/"native"); the default
+        # "code" (or "auto") runs the heuristic detector.
+        detection = detect_from_env(str(code_dir), hint=job.analysis_type)
+        print(
+            f"[worker] Target classified as {detection.target_type} "
+            f"(confidence={detection.confidence}) -> skill {detection.skill_name}"
+        )
+        for reason in detection.reasons:
+            print(f"[worker]   - {reason}")
+        _write_meta(
+            job.audit_id,
+            target=detection.to_dict(),
+            results_dir=detection.results_dir_name,
+        )
+
+        vulnhunt_dir = Path(str(code_dir)) / detection.results_dir_name
         vulnhunt_dir.mkdir(parents=True, exist_ok=True)
         print(f"[worker] VULNHUNT_DIR created at {vulnhunt_dir}")
 
@@ -201,8 +235,16 @@ async def run_analysis(job: AnalyzeRequest):
             report_language=job.report_language,
             docker_analysis=job.docker_analysis,
             callback_secret=job.callback_secret,
+            target_type=detection.target_type,
+            target_detection=detection.to_dict(),
+            results_dir=str(vulnhunt_dir),
         )
         print(f"[worker] Analysis complete for audit {job.audit_id}")
+
+        # The agent writes into the detected results dir; fall back to the
+        # other one if the model created it under the skill's default name.
+        vulnhunt_dir = _resolve_results_dir(Path(str(code_dir)), detection)
+        print(f"[worker] Reading results from {vulnhunt_dir}")
 
         # Worker handles callback (agent may not include secret properly)
         report_json = vulnhunt_dir / "report.json"
@@ -226,6 +268,7 @@ async def run_analysis(job: AnalyzeRequest):
                 f"{vulnhunt_dir}. The agent probably failed to start — "
                 f"check {audit_dir}/code/opencode.log"
             )
+        payload.setdefault("target_type", detection.target_type)
 
         # Exact severity counts: report.json already carries the agent's own
         # tally. Without this the backend has no `vulnerabilities`/`metrics`
@@ -253,7 +296,13 @@ async def run_analysis(job: AnalyzeRequest):
             for f in vulnhunt_dir.rglob("*"):
                 if f.is_file():
                     try:
+                        # Native evidence dirs may hold core dumps / pcaps.
                         rel = f.relative_to(vulnhunt_dir).as_posix()
+                        if f.stat().st_size > 2 * 1024 * 1024:
+                            artifacts[rel] = (
+                                f"[binary or oversized artifact omitted: {f.stat().st_size} bytes]"
+                            )
+                            continue
                         artifacts[rel] = f.read_text(encoding="utf-8", errors="replace")
                     except (OSError, UnicodeDecodeError):
                         continue

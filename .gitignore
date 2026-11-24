@@ -6,6 +6,7 @@ __pycache__/
 .gstack/
 .opencode/*
 !.opencode/agents/
+!.opencode/skills/
 backend/uploads/
 .DS_Store
 node_modules/

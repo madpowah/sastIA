@@ -25,7 +25,7 @@ permissions:
 Construire et lancer un conteneur Docker isolé à partir du code source fourni
 
 ## Description
-Crée un environnement Docker complet et isolé pour exécuter le code à auditer. Le conteneur servira de cible pour les tests de vulnérabilités par @SastIA_analyzer.
+Crée un environnement Docker complet et isolé pour exécuter le code à auditer. Le conteneur servira de cible pour les tests de vulnérabilités par @sastia_analyzer.
 
 ## Instructions
 - Analyse le code fourni pour identifier le type d'application (web, API, CLI, lib, etc.)
@@ -36,6 +36,17 @@ Crée un environnement Docker complet et isolé pour exécuter le code à audite
 - Si c'est une librairie ou CLI, assure-toi que le conteneur reste actif ou lance une boucle
 - Vérifie que l'application fonctionne correctement dans le conteneur
 
+### Cibles natives (driver, daemon, librairie, parser)
+- Installe la chaîne de compilation et les sanitizers : `build-essential`,
+  `clang`, `llvm`, `gdb`, `python3`, `libasan`/`libubsan` selon la base.
+- Pour Rust : toolchain stable + nightly (Miri / `-Z sanitizer=address`).
+- Pour noyau/driver : ne tente pas de charger un module dans un conteneur non
+  privilégié ; fournis un environnement de compilation et laisse la validation
+  dynamique au harness/VM décrit par @sastia_analyzer.
+- Garde le conteneur actif (`sleep infinity` ou boucle) pour que l'analyseur
+  puisse `docker exec` compiler le harness et exécuter les tests.
+- Expose `DOCKER_CONTAINER` et, le cas échéant, `DOCKER_URL` dans le résumé.
+
 ## Contraintes
 - **Ne JAMAIS monter de volumes** vers le host
 - **Ne JAMAIS** inclure de SECRET_KEY, mot de passe ou token en dur dans le Dockerfile ou les fichiers .env
@@ -43,11 +54,11 @@ Crée un environnement Docker complet et isolé pour exécuter le code à audite
 - Pour les variables d'environnement sensibles, écris-les dans un fichier `.env` exclu du build et passé via `--env-file`
 - **Utilise un utilisateur non-root** dans le Dockerfile (créer un user avec `adduser` et utiliser `USER`)
 - Applique les mesures de sécurité essentielles (pas de --privileged, réseau isolé si possible)
-- Utilise `--network host` ou expose les ports explicitement pour que @SastIA_analyzer puisse tester
+- Utilise `--network host` ou expose les ports explicitement pour que @sastia_analyzer puisse tester
 - Le conteneur ne doit être accessible qu'en localhost
 
 ## Cleanup (obligatoire en fin d'audit)
-QUAND @SastIA_manager t'active pour le nettoyage, tu DOIS exécuter dans l'ordre :
+QUAND @sastia_manager t'active pour le nettoyage, tu DOIS exécuter dans l'ordre :
 1. `docker stop sastia-audit-{id}` — arrêter le conteneur
 2. `docker rm -f sastia-audit-{id}` — supprimer le conteneur
 3. `docker rmi -f sastia-audit-{id}` — supprimer l'image
@@ -57,7 +68,7 @@ QUAND @SastIA_manager t'active pour le nettoyage, tu DOIS exécuter dans l'ordre
 - Vérifie avec `docker ps -a --filter name=sastia-audit-{id}` et `docker images -q sastia-audit-{id}` que tout est bien supprimé
 
 ## Output
-Tu DOIS retourner un bloc structuré avec ces informations (obligatoire pour @SastIA_analyzer) :
+Tu DOIS retourner un bloc structuré avec ces informations (obligatoire pour @sastia_analyzer) :
 ```
 ## Docker Environment Summary
 - **Container Name:** sastia-audit-{id}

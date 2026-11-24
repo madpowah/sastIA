@@ -13,6 +13,185 @@ def _find_opencode() -> list[str]:
     raise RuntimeError("opencode not found on PATH or as Python module")
 
 
+def _build_web_pipeline(
+    code_dir: str,
+    phases_dir: str,
+    skill_dir: str,
+    vulnhunt_dir: str,
+    docker_analysis: bool,
+) -> str:
+    steps = [
+        (
+            "Recon",
+            "**Phase 1 - Recon** : Écris ##PHASE: Recon## puis active @sastia_analyzer : "
+            f"\"Phase 1. VULNHUNT_DIR={vulnhunt_dir} PHASES_DIR={phases_dir} SKILL_DIR={skill_dir}. "
+            "Suis phase1_recon.md. Écris phase1_output.md\"",
+        ),
+        (
+            "Hunt",
+            "**Phase 2 - Hunt** : Écris ##PHASE: Hunt## puis lis ${PHASES_DIR}/phase2_hunt.md. "
+            "Crée les partitions. Dispatche les agents de traçage (3/partition + sink-driven). "
+            "Utilise @sastia_analyzer.",
+        ),
+        (
+            "Verify",
+            "**Phase 2b - Verify** : Écris ##PHASE: Verify## puis active @sastia_analyzer : "
+            "\"Phase 2b. Mêmes vars. Suis phase2b_verify.md. Écris phase2b_output.md\"",
+        ),
+        (
+            "Reproduce",
+            "**Phase 3 - Reproduce/Fix/Sweep** : Écris ##PHASE: Reproduce## puis active "
+            "@sastia_analyzer : \"Phase 3. Mêmes vars. Suis phase3_reproduce_test.md, "
+            "phase3c_fixes.md, phase3d_sweep.md. Écris poc/, exploit_tests/, phase3_output.md, "
+            "phase3d_output.md\"",
+        ),
+    ]
+
+    if docker_analysis:
+        steps.append(
+            (
+                "Docker",
+                "**Docker Build** : Écris ##PHASE: Docker## puis active @sastia_docker avec "
+                f"CODE_DIR={code_dir} pour builder l'image et lancer le conteneur. "
+                "Récupère ## Docker Environment Summary.",
+            )
+        )
+        steps.append(
+            (
+                "Docker",
+                "**Docker Validation** : Active @sastia_analyzer avec : "
+                f"\"Validation Docker. VULNHUNT_DIR={vulnhunt_dir} DOCKER_URL=<url> "
+                "DOCKER_CONTAINER=<name>. Exécute les PoC de poc/ et exploit_tests/ contre le "
+                "conteneur. Marque : VALIDATED / FAILED / NOT-TESTED. Écris validation_results.md\"",
+            )
+        )
+
+    steps.append(
+        (
+            "Report",
+            "**Rapport** : Écris ##PHASE: Report## puis active @sastia_rapport. "
+            "Suis ${PHASES_DIR}/phase4_report.md. Template obligatoire : en-tête "
+            "`# VulnHunter Security Audit Report`, Summary `ID | Title | CWE | "
+            "Severity | Exploit Test | Status`, sections Resolved Input Inventory / "
+            "Not Found / Code Quality / Sweep / Artifacts. Inclus validation_results.md "
+            f"si dispo. Écris le JSON dans {vulnhunt_dir}/report.json",
+        )
+    )
+
+    if docker_analysis:
+        steps.append(
+            (
+                "Report",
+                "**NETTOYAGE** : Active @sastia_docker pour supprimer conteneur + image",
+            )
+        )
+
+    return "\n\n".join(f"{i}. {text}" for i, (_, text) in enumerate(steps, 1))
+
+
+def _build_native_pipeline(
+    code_dir: str,
+    phases_dir: str,
+    skill_dir: str,
+    vulnhunt_dir: str,
+    docker_analysis: bool,
+) -> str:
+    common = f"VULNHUNT_DIR={vulnhunt_dir} PHASES_DIR={phases_dir} SKILL_DIR={skill_dir}"
+    dynamic = (
+        "TARGET_MODE=dynamic, DOCKER_CONTAINER=<name>, DOCKER_URL=<url>"
+        if docker_analysis
+        else "TARGET_MODE=static"
+    )
+
+    steps = [
+        (
+            "Shaping",
+            "**Phase 0 - Target Shaping** : Écris ##PHASE: Shaping## puis active "
+            f"@sastia_analyzer : \"Phase 0. {common}. Suis phase0_target_shaping.md. "
+            "Écris target_shaping.md\"",
+        ),
+        (
+            "Recon",
+            "**Phase 1 - Recon** : Écris ##PHASE: Recon## puis active @sastia_analyzer : "
+            f"\"Phase 1. {common}. Suis phase1_recon.md. Écris phase1_output.md, "
+            "state_identity_inventory.md, invariant_register.md, negative_space.md, "
+            "risk_ranking.md\"",
+        ),
+        (
+            "Hunt",
+            "**Phase 2 - Hunt** : Écris ##PHASE: Hunt## puis lis ${PHASES_DIR}/phase2_hunt.md. "
+            "Crée les partitions natives. Dispatche 1 agent par lens (INJ/AUTH/MEM/PROTO/IDENT) "
+            "et par partition, plus un agent sink-driven. Minimum (5 × partitions) + 1, "
+            "en vagues de 6 maximum. Utilise @sastia_analyzer.",
+        ),
+        (
+            "Verify",
+            "**Phase 2b - Verify** : Écris ##PHASE: Verify## puis active @sastia_analyzer : "
+            "\"Phase 2b. Mêmes vars. Suis phase2b_verify.md. Lis results/, "
+            "state_identity_inventory.md, invariant_register.md, negative_space.md. "
+            "Écris phase2b_output.md et latent_defects.md\"",
+        ),
+        (
+            "Compose",
+            "**Phase 2c - Composition** : Écris ##PHASE: Compose## puis active @sastia_analyzer : "
+            "\"Phase 2c. Mêmes vars. Suis phase2c_composition.md. Écris phase2c_output.md\"",
+        ),
+    ]
+
+    if docker_analysis:
+        steps.append(
+            (
+                "Docker",
+                "**Docker Build** : Écris ##PHASE: Docker## puis active @sastia_docker avec "
+                f"CODE_DIR={code_dir} pour builder l'image et lancer le conteneur. "
+                "Récupère ## Docker Environment Summary.",
+            )
+        )
+
+    steps.append(
+        (
+            "Reproduce",
+            "**Phase 3 - Reproduce/Test/Validate** : Écris ##PHASE: Reproduce## puis active "
+            f"@sastia_analyzer : \"Phase 3. {common}. {dynamic}. Suis "
+            "phase3_reproduce_test.md. Lis phase2b_output.md et phase2c_output.md. "
+            "Écris poc/, exploit_tests/, evidence/, phase3_output.md. "
+            "Si TARGET_MODE=dynamic, exécute la validation (ASan/UBSan/KASan, harness, "
+            "paquets) dans le conteneur et écris validation_results.md. Sinon marque les "
+            "findings non prouvés Potential.\"",
+        )
+    )
+    steps.append(
+        (
+            "Sweep",
+            "**Phase 3d - Sweep** : Écris ##PHASE: Sweep## puis active @sastia_analyzer : "
+            "\"Phase 3d. Mêmes vars. Suis phase3d_sweep.md. Écris phase3d_output.md\"",
+        )
+    )
+    steps.append(
+        (
+            "Report",
+            "**Rapport** : Écris ##PHASE: Report## puis active @sastia_rapport. "
+            "Suis ${PHASES_DIR}/phase4_report.md pour le contenu natif, mais produis "
+            "le **même template** que le pipeline web : en-tête `# VulnHunter Security "
+            "Audit Report`, Summary `ID | Title | CWE | Severity | Exploit Test | "
+            "Status` (ne pas insérer Lens dans cette table), sections Resolved Input "
+            "Inventory / Not Found / Code Quality / Sweep / Artifacts, puis ajoute "
+            "Confirmed compositions / Latent defects / Coverage artifacts. Inclus "
+            f"validation_results.md si dispo. Écris le JSON dans {vulnhunt_dir}/report.json",
+        )
+    )
+
+    if docker_analysis:
+        steps.append(
+            (
+                "Report",
+                "**NETTOYAGE** : Active @sastia_docker pour supprimer conteneur + image",
+            )
+        )
+
+    return "\n\n".join(f"{i}. {text}" for i, (_, text) in enumerate(steps, 1))
+
+
 async def run_manager_agent(
     code_dir: str,
     audit_id: str,
@@ -23,6 +202,9 @@ async def run_manager_agent(
     docker_analysis: bool = False,
     callback_secret: str | None = None,
     timeout: int = 18000,
+    target_type: str = "web",
+    target_detection: dict | None = None,
+    results_dir: str | None = None,
 ) -> str:
     audit_dir = os.path.dirname(code_dir)
     worker_log = os.path.join(audit_dir, "opencode.log")
@@ -36,55 +218,78 @@ async def run_manager_agent(
         "en": "The final report MUST be written in English.",
     }.get(report_language, "The final report MUST be written in English.")
 
-    docker_validation = ""
-    docker_cleanup = ""
-    if docker_analysis:
-        docker_validation = f"""
-5. **Docker Build** : Active @sastia_docker avec CODE_DIR={code_dir} pour builder l'image et lancer le conteneur. Récupère ## Docker Environment Summary.
+    target_type = "native" if target_type == "native" else "web"
+    skill_name = "vulnhunt-native" if target_type == "native" else "vulnhunt"
+    results_name = "vulnhunt_native_results" if target_type == "native" else "vulnhunt_results"
+    vulnhunt_dir = results_dir or os.path.join(code_dir, results_name)
 
-6. **Docker Validation** : Active @sastia_analyzer avec :
-   "Validation Docker. VULNHUNT_DIR={code_dir}/vulnhunt_results DOCKER_URL=<url> DOCKER_CONTAINER=<name>
-    Exécute les PoC de poc/ et exploit_tests/ contre le conteneur.
-    Marque : VALIDATED / FAILED / NOT-TESTED. Écris validation_results.md"
+    skill_dir = os.path.expanduser(f"~/.config/opencode/skills/{skill_name}")
+    phases_dir = os.path.join(skill_dir, "phases")
 
-7. **Cleanup Docker** : Active @sastia_docker pour supprimer conteneur + image
-"""
-        docker_cleanup = "\n8. **NETTOYAGE** : Active @sastia_docker pour supprimer conteneur + image"
+    detection = target_detection or {}
+    evidence = "; ".join(detection.get("reasons") or []) or "n/a"
+    confidence = detection.get("confidence", "n/a")
+    target_label = (
+        "non-web / native (librairie, service, daemon, driver, firmware, parser)"
+        if target_type == "native"
+        else "web (application, API, site, service HTTP)"
+    )
 
-    phases_dir = os.path.expanduser("~/.config/opencode/skills/vulnhunt/phases")
-    skill_dir = os.path.expanduser("~/.config/opencode/skills/vulnhunt")
+    if target_type == "native":
+        pipeline = _build_native_pipeline(
+            code_dir, phases_dir, skill_dir, vulnhunt_dir, docker_analysis
+        )
+        pipeline_note = (
+            "Méthodologie native : lenses INJ/AUTH/MEM/PROTO/IDENT + composition (Phase 2c). "
+            "Les invariants, l'état, les pools et les défauts latents font partie de la preuve. "
+        )
+    else:
+        pipeline = _build_web_pipeline(
+            code_dir, phases_dir, skill_dir, vulnhunt_dir, docker_analysis
+        )
+        pipeline_note = (
+            "Méthodologie web : inventaire des entrées, traçage input → sink, "
+            "vérification adversariale, sweep. "
+        )
 
-    prompt = f"""Tu es SastIA_manager, l'orchestrateur d'audit de sécurité basé sur la méthodologie VulnHunter.
+    prompt = f"""Tu es SastIA_manager, l'orchestrateur d'audit de sécurité de SAST IA.
 
 Le code source à analyser se trouve ici : {code_dir}
 Il provient de : {source_desc}
 L'ID de l'audit est : {audit_id}
 {report_language_instruction}
 
+## Classification de la cible (déjà effectuée par le worker)
+
+- TARGET_TYPE={target_type}
+- TARGET_LABEL={target_label}
+- TARGET_CLASS_CONFIDENCE={confidence}
+- TARGET_CLASS_EVIDENCE={evidence}
+- SKILL_NAME={skill_name}
+
+Le worker a pré-classé la cible. Utilise **uniquement** la méthodologie
+`{skill_name}` via `${{SKILL_DIR}}/SKILL.md`. Si les premiers fichiers inspectés
+contredisent manifestement cette classification, signale-le dans le rapport
+(section "Not found / excluded") mais ne mélange pas les deux méthodologies.
+
 ## Variables
 - CODE_DIR={code_dir}
-- VULNHUNT_DIR={code_dir}/vulnhunt_results
+- VULNHUNT_DIR={vulnhunt_dir}
 - PHASES_DIR={phases_dir}
 - SKILL_DIR={skill_dir}
 - CALLBACK_URL={callback_url} (le worker envoie le callback automatiquement)
 - DOCKER_ENABLED={'true' if docker_analysis else 'false'}
+- TARGET_MODE={'dynamic' if docker_analysis else 'static'}
 
-Compatible tous modèles. Statique par défaut. Si DOCKER_ENABLED, validation Docker après Phase 3.
+Compatible tous modèles. Statique par défaut. Si DOCKER_ENABLED, la validation
+dynamique s'exécute dans le conteneur Docker. {pipeline_note}
 
 ## Pipeline
 
 Suis `${{SKILL_DIR}}/SKILL.md`. Phases dans `${{PHASES_DIR}}/`.
 
-1. **Phase 1 - Recon** : Écris ##PHASE: Recon## puis active @sastia_analyzer : "Phase 1. VULNHUNT_DIR={code_dir}/vulnhunt_results PHASES_DIR={phases_dir}. Suis phase1_recon.md. Écris phase1_output.md"
+{pipeline}
 
-2. **Phase 2 - Hunt** : Écris ##PHASE: Hunt## puis lis ${{PHASES_DIR}}/phase2_hunt.md. Crée les partitions. Dispatche les agents de traçage (3/partition + sink-driven). Utilise @sastia_analyzer.
-
-3. **Phase 2b - Verify** : Écris ##PHASE: Verify## puis active @sastia_analyzer : "Phase 2b. Mêmes vars. Suis phase2b_verify.md. Écris phase2b_output.md"
-
-4. **Phase 3 - Reproduce/Fix/Sweep** : Écris ##PHASE: Reproduce## puis active @sastia_analyzer : "Phase 3. Mêmes vars. Suis phase3_reproduce_test.md, phase3c_fixes.md, phase3d_sweep.md. Écris poc/, exploit_tests/, phase3_output.md, phase3d_output.md"
-{docker_validation}
-7. **Rapport** : Écris ##PHASE: Report## puis active @sastia_rapport. Suis ${{PHASES_DIR}}/phase4_report.md. Inclus validation_results.md si dispo. Écris le JSON dans ${{VULNHUNT_DIR}}/report.json
-{docker_cleanup}
 IMPORTANT : Ne fais pas d'analyse toi-même. Dispatche TOUT."""
 
     DEFAULT_MODEL = "opencode/deepseek-v4-flash-free"
@@ -94,10 +299,8 @@ IMPORTANT : Ne fais pas d'analyse toi-même. Dispatche TOUT."""
         model = f"opencode-go/{model}"
     opencode_cmd = _find_opencode()
     Path(prompt_file).write_text(prompt, encoding="utf-8")
-    # NOTE: OpenCode 2 removed the `run --dir` flag (Unrecognized flag: --dir).
-    # The working directory is set with the subprocess `cwd=` below, which is
-    # what `--dir` did; passing the directory as a positional is ambiguous
-    # because `run` takes a variadic message.
+    # NOTE: OpenCode 2 removed the `run --dir` flag. The working directory is
+    # set with the subprocess `cwd=` below, which is what `--dir` did.
     cmd = [
         *opencode_cmd, "run",
         "--model", model,

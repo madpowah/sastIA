@@ -1,0 +1,15 @@
+{
+  "id": "curl-cve-2026-8932",
+  "title": "incomplete mTLS config matching in connection reuse",
+  "must_find": [
+    {
+      "file": "lib/vtls/vtls.c",
+      "function": "match_ssl_primary_config",
+      "missing_fields": ["key", "key_type", "key_passwd", "cert_type", "key_blob"],
+      "min_fields": 3,
+      "root_cause": "incomplete mTLS identity predicate in connection reuse",
+      "keywords": ["connection reuse", "mTLS", "client certificate", "private key"]
+    }
+  ],
+  "must_not_find_on_fixed": true
+}

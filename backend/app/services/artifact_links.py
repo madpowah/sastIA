@@ -24,7 +24,11 @@ from collections.abc import Container
 _DIR = r"(?:poc|exploit_tests|evidence|results|partitions)"
 # Bare root-level artifacts: README.md, report.md, report.json, phase1_output.md,
 # phase2b_output.md, validation_results.md, ...
-_ROOT = r"(?:README|report|validation_results|docker_environment|phase\d[a-z]?_output)"
+_ROOT = (
+    r"(?:README|report|validation_results|docker_environment|phase\d[a-z]?_output"
+    r"|target_shaping|state_identity_inventory|invariant_register|negative_space"
+    r"|risk_ranking|latent_defects)"
+)
 _EXT = r"(?:md|json|txt|py|sh|c|log)"
 
 # `poc/VULN-001_x.md` — the whitespace exclusion keeps multi-path spans

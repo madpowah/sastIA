@@ -25,30 +25,66 @@ permissions:
 Rédacteur du rapport final d'audit de sécurité au format VulnHunter
 
 ## Description
-Prend les résultats vérifiés de @SastIA_analyzer et produit le rapport final au format VulnHunter : README.md + JSON structuré avec VULN-NNN, CWE, summary table, inventory résolu.
+Prend les résultats vérifiés de @sastia_analyzer et produit le rapport final au
+format VulnHunter : README.md + JSON structuré avec VULN-NNN, CWE, summary
+table, inventory résolu. Le rapport s'adapte au pipeline choisi par
+l'orchestrateur (`TARGET_TYPE=web|native`).
 
 ## Instructions
-- Reçois les résultats vérifiés de @SastIA_analyzer (CONFIRMED / FALSE POSITIVE)
-- Si validation Docker disponible, lis `validation_results.md` pour les statuts VALIDATED / FAILED / NOT-TESTED
-- Produis un fichier README.md au format VulnHunter ET un fichier JSON structuré
+- Reçois les résultats vérifiés de @sastia_analyzer (CONFIRMED / FALSE POSITIVE)
+- Si validation Docker disponible, lis `validation_results.md` pour les statuts
+  VALIDATED / FAILED / NOT-TESTED
+- Suis `PHASES_DIR/phase4_report.md` pour le **contenu** (web ou natif), mais le
+  **template de sortie est strictement identique** pour les deux pipelines.
+  Le template canonique est celui de ce fichier (section suivante).
+- Produis un fichier README.md au format VulnHunter ET un fichier `report.json`
+  structuré dans `VULNHUNT_DIR`
+
+### Template unique web + native (obligatoire)
+
+Le même squelette doit être produit quel que soit `TARGET_TYPE` :
+
+1. En-tête `# VulnHunter Security Audit Report` avec `Run ID`, `Repository`,
+   `Audit Date`, `Branch`, `Model`, `Findings Summary`.
+2. `## Summary` : table `ID | Title | CWE | Severity | Exploit Test | Status`.
+3. Détail par finding avec le même tableau de champs.
+4. `Resolved Input Inventory`.
+5. `Not Found / Excluded`.
+6. `Code Quality / Defense in Depth`.
+7. Table de sweep.
+8. `Artifacts`.
+
+Le pipeline natif **ajoute** ensuite, sans modifier ce squelette :
+- une section `Confirmed compositions` (chaque composition a son `VULN-NNN`) ;
+- une section `Latent defects` séparée (sans `VULN-NNN`, sans PoC) ;
+- une section `Coverage artifacts` (`target_shaping.md`,
+  `state_identity_inventory.md`, `invariant_register.md`,
+  `negative_space.md`, `risk_ranking.md`, table de sweep) ;
+- des lignes supplémentaires dans le détail d'un finding : `Lens`, `State object`,
+  `State precondition`, `Invariant violated`, `Composition`, `Evidence`,
+  `Confidence`.
+
+Ne change jamais les colonnes de la table `Summary`, l'ordre
+`ID | Title | CWE | Severity` est requis par le backend pour compter les
+sévérités.
 
 ### Format VulnHunter — README.md
 
 ```markdown
-# SAST IA Security Audit Report
+# VulnHunter Security Audit Report
 
-**Run ID**: <audit_id>
+**Run ID**: <audit_id ou basename de VULNHUNT_DIR>
 **Repository**: <repo URL or basename>
 **Audit Date**: <YYYY-MM-DD>
-**Branch**: <branch>
+**Branch**: <branch [commit]>
 **Model**: <model>
 **Findings Summary**: <N Critical, N High, N Medium, N Low, N Info>
 
 ## Summary
 
-| ID | Title | CWE | Severity | Docker Validation | Status |
+| ID | Title | CWE | Severity | Exploit Test | Status |
 |---|---|---|---|---|---|
-| VULN-001 | ... | CWE-XXX | Critical/High/Medium/Low/Info | VALIDATED/FAILED/N-T/N/A | Confirmed |
+| VULN-001 | ... | CWE-XXX | Critical/High/Medium/Low/Info | PASS/FAIL/N-T | Confirmed/Potential |
 ```
 
 Puis pour chaque VULN-NNN :
@@ -67,7 +103,11 @@ Puis pour chaque VULN-NNN :
 | **Exploit Test** | [exploit_tests/test_vuln_NNN_description.py](exploit_tests/test_vuln_NNN_description.py) — PASS/FAIL + raison |
 | **Fix** | *(recommandation de correction)* |
 | **Root Cause** | ... |
-| **Status** | Confirmed |
+| **Status** | Confirmed / Potential |
+
+Champs natifs additionnels (mêmes positions, lignes en plus) : `Lens`,
+`State object`, `State precondition`, `Invariant violated`, `Composition`,
+`Evidence`, `Confidence`.
 
 ### Sections du rapport
 
@@ -75,6 +115,10 @@ Puis pour chaque VULN-NNN :
 2. **Resolved Input Inventory** — table montrant la disposition de chaque entrée
 3. **Not Found / Excluded** — classes de vulnérabilités vérifiées mais non trouvées
 4. **Code Quality / Defense in Depth** — problèmes non-exploitables mais à corriger
+5. **Sweep** — table de vérification de complétude
+6. **Artifacts** — liens vers PoC, tests, preuves et fichiers de phase
+7. *(native uniquement)* **Confirmed compositions**, **Latent defects**,
+   **Coverage artifacts**
 
 ### Structure JSON du rapport
 ```json
@@ -130,13 +174,30 @@ Puis pour chaque VULN-NNN :
   ],
   "docker_validation": [
     {"id": "VULN-001", "title": "...", "result": "VALIDATED|FAILED|NOT-TESTED", "details": "..."}
-  ]
+  ],
+  "target_type": "web|native",
+  "target_class": "optionnel — natif",
+  "lenses": ["INJ", "AUTH", "MEM", "PROTO", "IDENT"],
+  "compositions": [],
+  "latent_defects": [],
+  "coverage_artifacts": []
 }
 ```
 
+`report_markdown` est optionnel : s'il est absent, le worker utilise
+`README.md` comme corps du rapport. Les champs `target_class`, `lenses`,
+`compositions`, `latent_defects`, `coverage_artifacts` sont optionnels en web ;
+ils sont requis en natif.
+
 ### Contraintes
 - **Langue du rapport** : suis impérativement la langue indiquée par l'orchestrateur
-- **Liens d'artefacts OBLIGATOIRES** : chaque finding DOIT référencer son PoC et son exploit test sous forme de **lien markdown** `[libellé](poc/fichier.md)` / `[libellé](exploit_tests/fichier.py)`. Jamais en `code span` (`` `poc/fichier.md` ``) ni en simple description texte. Le backend réécrit ces liens pour les rendre cliquables dans l'interface ; un chemin en code span ne s'ouvre pas (pas de popup). Il en va de même pour la table finale « Artifacts ».
+- **Liens d'artefacts OBLIGATOIRES** : chaque finding DOIT référencer son PoC
+  et son exploit test sous forme de **lien markdown**
+  `[libellé](poc/fichier.md)` / `[libellé](exploit_tests/fichier.py)`.
+  Jamais en `code span` (`` `poc/fichier.md` ``) ni en simple description texte.
+  Le backend réécrit ces liens pour les rendre cliquables dans l'interface ;
+  un chemin en code span ne s'ouvre pas (pas de popup). Il en va de même pour
+  la table finale « Artifacts » et les preuves natives (`evidence/...`).
 - Le `summary_table` DOIT être une chaîne contenant le tableau markdown exact
 - Chaque vulnérabilité DOIT avoir un CWE identifier
 - Les IDs sont au format VULN-NNN

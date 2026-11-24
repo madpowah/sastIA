@@ -1,0 +1,15 @@
+{
+  "id": "openbsd-sack",
+  "title": "SACK start validation bypass + NULL cursor panic",
+  "must_find": [
+    {
+      "file": "sys/netinet/tcp_input.c",
+      "function": "tcp_sack_option",
+      "missing_guard": "SEQ_LT(sack.start, snd_una)",
+      "null_deref": "p->next",
+      "composition": "skipped guard + signed 2^31 overflow + NULL cursor",
+      "keywords": ["SACK", "snd_una", "2^31", "NULL", "panic"]
+    }
+  ],
+  "must_not_find_on_fixed": true
+}
