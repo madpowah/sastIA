@@ -92,6 +92,29 @@ The test must prove the **attacker's goal**, not just that a code path runs.
 
 A test that only proves "the vulnerable function is called" is a **FAIL**.
 
+### No tautologies (the assertion must observe the target)
+
+An assertion MUST depend on a result **observed from the target**: a sanitizer
+report, a signal/exit code, bytes returned on a socket, a file read from outside
+the intended directory, a changed effective UID.
+
+It must NEVER depend on a value the test hardcodes. This pattern can never fail,
+so it proves nothing:
+
+```python
+def _vulnerable_path(payload):
+    blocked = False                                   # hardcoded
+    return (not blocked) and payload is not None
+
+assert _vulnerable_path("ATTACKER_PAYLOAD")           # always passes
+```
+
+Re-implementing the target's logic in the test (`class Heap`, a Python model of
+the C function) is a **model**, not an exploit test: it may accompany a static
+PoC but it cannot produce a PASS. If the target cannot be built or run here, say
+so explicitly and mark the finding `STATIC-PROOF` — never manufacture a passing
+test.
+
 ### Test structure
 
 ```text
@@ -114,6 +137,21 @@ test_vuln_NNN_<name>:
 
 **Mandatory exploitation attempt before Code Smell**: write the PoC and test
 file first, then document why it fails.
+
+### Verdict vocabulary
+
+Every finding carries exactly one verdict, used in `validation_results.md` and in
+the report:
+
+| Verdict | Meaning |
+|---|---|
+| `VALIDATED` | the attack was **executed against the running target** and produced observed output |
+| `STATIC-PROOF` | proven by reading the source only (grep, code model, configuration check) |
+| `FAILED` | executed, but a defence blocked it |
+| `NOT-TESTED` | not exercised (missing configuration, environment, or preconditions) |
+
+Never write `VALIDATED` for a static test. A finding without observed output is
+`STATIC-PROOF`, and the report must say so in the row itself.
 
 ## Phase 3c — Dynamic validation (optional)
 

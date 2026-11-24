@@ -43,7 +43,7 @@ instance gets its own row.
 | **Data/state flow** | source -> ... -> sink (file:line at each step) |
 | **Composition** | if applicable: half A + half B -> effect |
 | **PoC** | [poc/VULN-NNN_description.md](poc/VULN-NNN_description.md) — what it proves |
-| **Exploit test** | [exploit_tests/test_vuln_NNN_description.py](exploit_tests/test_vuln_NNN_description.py) — PASS/FAIL + reason |
+| **Exploit test** | [exploit_tests/test_vuln_NNN_description.py](exploit_tests/test_vuln_NNN_description.py) — VERDICT (`VALIDATED` / `STATIC-PROOF` / `FAILED` / `NOT-TESTED`) + exact command run + raw observed output |
 | **Evidence** | [evidence/VULN-NNN/report.txt](evidence/VULN-NNN/report.txt) (sanitizer, panic, pcap) |
 | **Fix** | proposed strategy (not applied) |
 | **Root cause** | shared root cause name, if part of a sweep group |
@@ -53,6 +53,18 @@ instance gets its own row.
 **Validation rule**: a finding is invalid if the PoC or exploit test field is
 empty, "N/A", or "see above". Each must point to a saved artifact. If you cannot
 produce a PoC/test, downgrade to `Potential` and include a validation plan.
+
+**Verdict rule — two distinct proofs.** `VALIDATED` is reserved for an attack that
+was actually **executed against the running target** and produced observed output
+(sanitizer report, crash, signal/exit code, bytes on the wire, file read from
+outside the intended directory). Anything proven only by reading the source — a
+grep for a marker, a re-implementation of the code, a configuration check — is
+`STATIC-PROOF`. Never write `VALIDATED` for a static test.
+
+Each **Exploit test** row MUST quote:
+1. the exact command (or script path + invocation) that was run;
+2. the raw observed output, verbatim — not paraphrased;
+3. the verdict.
 
 ## Confirmed compositions
 

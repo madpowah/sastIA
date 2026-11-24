@@ -61,8 +61,15 @@ def _build_web_pipeline(
                 "Docker",
                 "**Docker Validation** : Active @sastia_analyzer avec : "
                 f"\"Validation Docker. VULNHUNT_DIR={vulnhunt_dir} DOCKER_URL=<url> "
-                "DOCKER_CONTAINER=<name>. Exécute les PoC de poc/ et exploit_tests/ contre le "
-                "conteneur. Marque : VALIDATED / FAILED / NOT-TESTED. Écris validation_results.md\"",
+                "DOCKER_CONTAINER=<name>. Pour CHAQUE finding, exécute une ATTAQUE RÉELLE "
+                "contre le conteneur en marche (curl, socket brut, client du protocole, "
+                "binaire du projet). Ne te contente pas de relancer le test unitaire : si le "
+                "test est statique ou simulé, la validation ne prouve rien. Verdicts "
+                "autorisés : VALIDATED (attaque réelle exécutée sur la cible + sortie brute "
+                "capturée) / STATIC-PROOF (preuve statique seulement : grep, modèle de code, "
+                "configuration) / FAILED / NOT-TESTED. Écris validation_results.md avec, PAR "
+                "FINDING : la commande exacte, la sortie brute observée (copiée telle quelle, "
+                "non paraphrasée) et le verdict.\"",
             )
         )
 
@@ -156,8 +163,11 @@ def _build_native_pipeline(
             "phase3_reproduce_test.md. Lis phase2b_output.md et phase2c_output.md. "
             "Écris poc/, exploit_tests/, evidence/, phase3_output.md. "
             "Si TARGET_MODE=dynamic, exécute la validation (ASan/UBSan/KASan, harness, "
-            "paquets) dans le conteneur et écris validation_results.md. Sinon marque les "
-            "findings non prouvés Potential.\"",
+            "paquets) dans le conteneur et écris validation_results.md avec, PAR FINDING : "
+            "la commande exacte, la sortie brute (rapport sanitizer, crash, code retour) et "
+            "le verdict — VALIDATED (attaque réellement exécutée) / STATIC-PROOF (grep, "
+            "modèle de code, configuration) / FAILED / NOT-TESTED. Un test tautologique ou "
+            "simulé ne valide rien. Sinon marque les findings non prouvés Potential.\"",
         )
     )
     steps.append(
