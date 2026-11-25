@@ -227,7 +227,17 @@ async def run_analysis(job: AnalyzeRequest):
         vulnhunt_dir.mkdir(parents=True, exist_ok=True)
         print(f"[worker] VULNHUNT_DIR created at {vulnhunt_dir}")
 
+        # Native targets fan out much wider (5 lenses x N partitions + a
+        # sink-driven agent), so the 5 h web budget is not enough: measured on
+        # curl (1080 native files), Phase 1 took 57 min and the Hunt phase was
+        # still running after 4 h. Native gets 9 h.
+        agent_timeout = 32400 if detection.target_type == "native" else 18000
+        print(
+            f"[worker] agent timeout: {agent_timeout}s "
+            f"({agent_timeout // 3600}h, target={detection.target_type})"
+        )
         await run_manager_agent(
+            timeout=agent_timeout,
             code_dir=str(code_dir),
             audit_id=job.audit_id,
             callback_url=job.callback_url,

@@ -51,17 +51,18 @@ If you spawned fewer, you violated the procedure.
    | Navigation/Auth | NAV | CSRF, IDOR, auth bypass, conditional validation bypass, identity spoofing, confused deputy, security signal spoofing, mass assignment, parameter pollution |
    | Logic/Crypto | LOG | Race conditions, cache isolation, credential scope, resource exhaustion, prototype pollution, crypto issues, integer overflow |
 
-   **Spawn agents in waves of at most 6** — dispatch up to 6 agents in a single
-   message, wait for all 6 to produce results files, then dispatch the next wave.
+   **Spawn agents in waves of at most 8** — dispatch up to 8 agents in a single
+   message, wait for all 8 to produce results files, then dispatch the next wave.
    Do NOT dispatch all agents in one message regardless of partition count.
-   This cap prevents API rate-limit saturation; 12 concurrent agents still caused
-   429 failures in production.
+   This cap prevents API rate-limit saturation; the original cap of 6 was raised
+   to 8, keeping margin below the 12-concurrent threshold that caused 429s in
+   production.
 
    Example: 6 partitions = 19 agents → wave 1: SG-1 INJ/NAV/LOG + SG-2 INJ/NAV/LOG
-   (6 agents), wait → wave 2: SG-3 INJ/NAV/LOG + SG-4 INJ/NAV/LOG (6 agents),
-   wait → wave 3: SG-5 INJ/NAV/LOG + SG-6 INJ/NAV/LOG (6 agents), wait →
-   wave 4: sink-driven (1 agent). Always dispatch the sink-driven agent as its
-   own final wave after all partition agents complete.
+   + SG-3 INJ (7 agents), wait → wave 2: SG-3 NAV/LOG + SG-4 INJ/NAV/LOG + SG-5
+   INJ (7 agents), wait → wave 3: SG-5 NAV/LOG + SG-6 INJ/NAV/LOG (5 agents),
+   wait → wave 4: sink-driven (1 agent). Always dispatch the sink-driven agent as
+   its own final wave after all partition agents complete.
 
    - **Normal partitions**: one agent per class group (3 agents per partition).
    - **SEQUENTIAL-FALLBACK partitions**: process sequentially in the orchestrator's

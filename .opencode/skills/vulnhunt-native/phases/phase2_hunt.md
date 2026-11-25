@@ -35,7 +35,7 @@ For each production partition `SG-N`:
 If Phase 0 marked a lens not applicable with a concrete reason, record the skip
 in `phase1_output.md` and subtract it. Any other skip is a coverage failure.
 
-Dispatch in waves of at most 6 agents. Wait for each wave's results files.
+Dispatch in waves of at most 10 agents. Wait for each wave's results files.
 Do not dispatch all agents at once (rate limits, context).
 
 ### Budget and scale
