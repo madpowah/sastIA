@@ -177,6 +177,30 @@ def run_agent(prompt: str, code_dir: Path, model: str, log_path: Path) -> int:
     return proc.returncode or 0
 
 
+def collect_artifacts(vulnhunt_dir: Path, max_bytes: int = 2_000_000) -> dict[str, str]:
+    """Comme le worker : tous les fichiers texte du dossier de resultats.
+
+    Les binaires (harness compiles, pcap) sont ignores : le backend les
+    ecrirait en UTF-8 et les corromprait.
+    """
+    artifacts: dict[str, str] = {}
+    if not vulnhunt_dir.exists():
+        return artifacts
+    for path in vulnhunt_dir.rglob('*'):
+        if not path.is_file():
+            continue
+        try:
+            if path.stat().st_size > max_bytes:
+                continue
+            raw = path.read_bytes()
+        except OSError:
+            continue
+        if b'\x00' in raw[:8192]:
+            continue
+        artifacts[path.relative_to(vulnhunt_dir).as_posix()] = raw.decode('utf-8', errors='replace')
+    return artifacts
+
+
 def finalize(audit_id: str, vulnhunt_dir: Path, fields: dict) -> int:
     """Rejoue la finalisation du worker puis poste le callback."""
     import httpx
@@ -215,6 +239,13 @@ def finalize(audit_id: str, vulnhunt_dir: Path, fields: dict) -> int:
                 'medium': norm.get('medium', 0), 'low': norm.get('low', 0),
                 'info': norm.get('info', norm.get('informational', 0)),
             }
+
+    # Les artefacts doivent partir avec le callback : le backend les ecrit sur
+    # disque puis reecrit les liens relatifs du rapport vers /api/audits/.../artifacts/.
+    artifacts = collect_artifacts(vulnhunt_dir)
+    if artifacts:
+        payload['artifacts'] = artifacts
+    print(f'[resume] artefacts envoyes : {len(artifacts)}')
 
     url = f'{CALLBACK_BASE}/api/audits/{audit_id}/callback'
     with httpx.Client(timeout=30.0) as client:

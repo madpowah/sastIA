@@ -436,6 +436,7 @@ def analysis_callback(audit_id: uuid.UUID, request: Request, body: dict, db: Ses
 
     audit.report_markdown = report_markdown
     audit.status = AuditStatus.COMPLETED
+    audit.error_message = None
     audit.completed_at = datetime.now(timezone.utc)
 
     vulns_dict = body.get("vulnerabilities")
